@@ -1,0 +1,31 @@
+# Plantilla de configuración
+# Copien el contenido a un nuevo file application.properties y completen los valores.
+# No suban application.properties con contraseñas o secretos reales
+
+spring.application.name=ecommerce
+
+# --- Base de datos MySQL (el servidor tiene que estar levantado) ---
+spring.datasource.url=jdbc:mysql://localhost:3306/ecommerce_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=TU_PASSWORD_MYSQL
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# --- JPA / Hibernate ---
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# --- JWT (obligatorio para JwtUtil / login) ---
+# Mínimo 32 caracteres para HS256 (256 bits).
+jwt.secret=CAMBIA_POR_UNA_CLAVE_SECRETA_DE_AL_MENOS_32_CARACTERES
+# Vida del token en milisegundos (ej.: 24 h = 86400000).
+jwt.expiration=86400000
+
+# --- Opcional: H2 en memoria ---
+# spring.datasource.url=jdbc:h2:mem:testdb
+# spring.datasource.driverClassName=org.h2.Driver
+# spring.datasource.username=sa
+# spring.datasource.password=
+# spring.h2.console.enabled=true
+# spring.h2.console.path=/h2-console
