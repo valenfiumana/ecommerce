@@ -12,7 +12,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,6 +44,16 @@ public class Producto {
     private Double precio;    
     @Column(nullable = false)
     private Integer stock;
+
+    /**
+     * Dueño de la publicación en el marketplace: quien responde por precio y stock.
+     * <p>{@code LAZY}: el usuario no se carga hasta que el código accede a {@code vendedor} (ahorra joins si no hace falta).</p>
+     * <p>La FK en BD puede quedar {@code NULL} en productos creados antes de esta relación; el servicio exige vendedor en altas nuevas
+     * y solo admin puede tocar legados sin vendedor.</p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vendedor_id")
+    private Usuario vendedor;
 
     // private String imagenUrl;
     

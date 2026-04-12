@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -58,6 +59,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> manejarCredencialesInvalidas(BadCredentialsException ex) {
         return build(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+    }
+
+    /**
+     * Acceso denegado (HTTP 403): usuario autenticado pero sin permiso para la operación.
+     * Cubre {@link AccessDeniedException} lanzada desde servicios (p. ej. producto de otro vendedor).
+     * Nota: fallos 403 que ocurren solo en la cadena de filtros de Spring Security siguen yendo a
+     * {@link com.uade.tpo.ecommerce.security.RestSecurityErrorHandler}; acá entramos cuando la excepción burbujea desde el controller/servicio.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarAccesoDenegado(AccessDeniedException ex) {
+        String mensaje = ex.getMessage() != null && !ex.getMessage().isBlank()
+                ? ex.getMessage()
+                : "No autorizado para realizar esta operación";
+        return build(HttpStatus.FORBIDDEN, mensaje);
     }
 
     /**

@@ -33,7 +33,8 @@ import lombok.RequiredArgsConstructor;
  * <p>Resumen técnico: CORS para front en otro origen; {@link JwtFilter} antes del filtro usuario/contraseña;
  * reglas {@code permitAll} / {@code authenticated} / {@code hasRole}; {@link RestSecurityErrorHandler} para 401/403 en JSON.</p>
  * <p>Orden de {@code requestMatchers}: Spring aplica la <i>primera</i> regla que coincida (de arriba hacia abajo).</p>
- * <p>POST/PUT/DELETE productos = cualquier usuario autenticado (marketplace); afinar “solo vendedor dueño” en servicio si aplica.</p>
+ * <p>GET {@code /api/productos} es público; POST/PUT/DELETE requieren JWT. La autorización “dueño o admin”
+ * se aplica en {@link com.uade.tpo.ecommerce.service.ProductoService} (no se confía en un {@code vendedorId} del body).</p>
  */
 // Indica que esta clase contiene configuraciones de Spring
 @Configuration

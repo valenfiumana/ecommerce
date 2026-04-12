@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 /**
  * DTO de salida (response) para exponer un producto en la API sin devolver la entidad JPA.
  * Incluye los campos que el cliente necesita ver tras crear, leer o actualizar.
+ * <p>Datos del vendedor: solo lo imprescindible para mostrar en catálogo (id + nombre visible), no email ni contraseña.</p>
  */
 @Data
 @Builder
@@ -20,4 +21,9 @@ public class ProductoResponseDTO {
     private String descripcion;
     private Double precio;
     private Integer stock;
+
+    /** Id del usuario que publicó; útil para enlaces o soporte, no reemplaza políticas de autorización en servidor. */
+    private Long vendedorId;
+    /** Texto amigable armado en el servicio (ej. nombre + inicial del apellido); nunca el email. */
+    private String vendedorNombre;
 }

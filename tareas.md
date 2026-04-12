@@ -3,7 +3,7 @@
 
 ## Epic: Compras y catálogo “real”
 
-### 1. Publicaciones = oferta de un vendedor
+### 1. Publicaciones = oferta de un vendedor (DONE Valen)
 
 **Objetivo**  
 En un marketplace, un producto no “flota solo”: alguien lo publica y es responsable del stock y del precio.
@@ -43,7 +43,7 @@ El usuario arma la compra antes de pagar, sin comprometer stock definitivo hasta
 
 **Qué hacer**
 
-- Modelo `Carrito` (1 por usuario logueado, o anónimo con `sessionId` si lo permiten).
+- Modelo `Carrito` (1 por usuario logueado).
 - Modelo `CarritoItem`: producto, cantidad.
 - Endpoints: agregar ítem, actualizar cantidad, eliminar ítem, ver carrito.
 - Validar stock disponible al agregar/actualizar (no permitir cantidad > stock).

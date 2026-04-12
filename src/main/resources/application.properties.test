@@ -13,6 +13,9 @@ spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 # --- JPA / Hibernate ---
 spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 spring.jpa.hibernate.ddl-auto=update
+# Opcional: datos seed en src/main/resources/data.sql (ver application.properties principal).
+# spring.jpa.defer-datasource-initialization=true
+# spring.sql.init.mode=always
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
