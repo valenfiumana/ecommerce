@@ -14,25 +14,39 @@ import com.uade.tpo.ecommerce.service.AuthenticationService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Endpoints de alta de usuario y obtención de JWT.
+ * <p>
+ * Rutas bajo {@code /api/auth} están declaradas como {@code permitAll} en {@code SecurityConfig}: el cliente puede
+ * registrarse y loguearse <i>sin</i> mandar token. La respuesta del login es el string JWT que debe enviarse luego en
+ * {@code Authorization: Bearer ...} para rutas protegidas.
+ * </p>
+ * <p>Errores típicos (vía {@code GlobalExceptionHandler}): validación {@code @Valid} → 400; email duplicado → 409
+ * ({@link com.uade.tpo.ecommerce.exception.ConflictException}); credenciales incorrectas en login → 401
+ * ({@link org.springframework.security.authentication.BadCredentialsException}).</p>
+ */
 @RestController
 @RequestMapping("/api/auth")
-//anotación de Lombok que genera automáticamente un constructor que incluye todos los campos marcados como final, es igual que usar @autowired 
 @RequiredArgsConstructor
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
-    //http://localhost:8080/api/auth/register con metodo post http, enviar un body -> crear un usuario
+    /**
+     * Registro: persiste usuario con contraseña hasheada (BCrypt) y rol por defecto.
+     * {@code @Valid} dispara las anotaciones de Bean Validation del {@link RegisterRequestDTO}.
+     */
     @PostMapping("/register")
-    // @Valid ejecuta las validaciones declaradas en RegisterRequestDTO (@NotBlank, @Email, @Past, etc.)
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequestDTO request) {
-        //request tiene los datos del usuario a registrar, como nombre, email y contraseña
         return ResponseEntity.ok(authenticationService.register(request));
     }
 
-    //http://localhost:8080/api/auth/login con metodo post http, enviar un body -> loguear un usuario
+    /**
+     * Login: valida credenciales vía {@code AuthenticationManager}; si OK, devuelve JWT firmado.
+     * {@code @Valid} asegura email/contraseña no vacíos y formato de email antes de llamar a Spring Security.
+     */
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequestDTO request) {
+    public ResponseEntity<String> login(@Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authenticationService.authenticate(request));
     }
 }

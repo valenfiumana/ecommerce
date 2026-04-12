@@ -17,16 +17,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Centraliza respuestas JSON para errores de seguridad (antes del controlador; no pasa por GlobalExceptionHandler).
- * <p>
- * {@link AuthenticationEntryPoint}: usuario no autenticado accede a ruta protegida → HTTP 401.<br>
- * {@link AccessDeniedHandler}: usuario autenticado pero sin rol/permiso suficiente → HTTP 403.
- * </p>
- * El cuerpo replica los campos de {@link com.uade.tpo.ecommerce.dto.ErrorResponseDTO} para que el cliente trate
- * todos los errores de API de forma uniforme.
+ * Respuestas JSON para fallos de seguridad que ocurren <b>en la cadena de filtros</b>, antes de llegar al {@code @RestController}.
+ * No pasan por {@link com.uade.tpo.ecommerce.exception.GlobalExceptionHandler}.
+ * <ul>
+ *   <li>{@link AuthenticationEntryPoint#commence} → <b>401</b>: no hay autenticación válida (sin token, token inválido
+ *       en ruta protegida, sesión expirada, etc.).</li>
+ *   <li>{@link AccessDeniedHandler#handle} → <b>403</b>: el usuario está autenticado pero la regla
+ *       {@code hasRole} / {@code authenticated} / método security no autoriza la acción.</li>
+ * </ul>
+ * El JSON replica los campos de {@link com.uade.tpo.ecommerce.dto.ErrorResponseDTO} para el mismo contrato que el resto de la API.
  */
 @Component
-// Un solo bean implementa ambas interfaces y se registra dos veces en exceptionHandling(...) del SecurityFilterChain
 public class RestSecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
     @Override

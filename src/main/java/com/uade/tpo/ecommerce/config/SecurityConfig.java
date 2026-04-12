@@ -1,6 +1,9 @@
 package com.uade.tpo.ecommerce.config;
 
+import java.util.Arrays;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,6 +17,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.uade.tpo.ecommerce.model.Role;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
@@ -22,6 +28,13 @@ import com.uade.tpo.ecommerce.security.RestSecurityErrorHandler;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * <p><b>Documentación extendida</b> (complementa los comentarios {@code //} entre anotaciones más abajo).</p>
+ * <p>Resumen técnico: CORS para front en otro origen; {@link JwtFilter} antes del filtro usuario/contraseña;
+ * reglas {@code permitAll} / {@code authenticated} / {@code hasRole}; {@link RestSecurityErrorHandler} para 401/403 en JSON.</p>
+ * <p>Orden de {@code requestMatchers}: Spring aplica la <i>primera</i> regla que coincida (de arriba hacia abajo).</p>
+ * <p>POST/PUT/DELETE productos = cualquier usuario autenticado (marketplace); afinar “solo vendedor dueño” en servicio si aplica.</p>
+ */
 // Indica que esta clase contiene configuraciones de Spring
 @Configuration
 // Habilita la seguridad web de Spring Security
@@ -38,6 +51,34 @@ public class SecurityConfig {
     private final UsuarioRepository usuarioRepository;
     // Respuestas JSON 401/403 coherentes con ErrorResponseDTO (exceptionHandling del SecurityFilterChain)
     private final RestSecurityErrorHandler restSecurityErrorHandler;
+
+    /**
+     * Orígenes del front (SPA). Lista separada por comas; configurable con {@code app.cors.allowed-origins}.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}") String allowedOrigins) { // Especifica el origen permitido (URL de tu frontend)
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Además: separamos por coma y trim para varios frontends (Vite, CRA, etc.); con allowCredentials(true) no se puede usar "*" como origen.
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        configuration.setAllowedOrigins(origins);
+        // Además: OPTIONS incluido para el preflight CORS del navegador.
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // Además: Authorization debe poder enviarse en cross-origin (JWT Bearer).
+        configuration.setAllowedHeaders(List.of("*"));
+        // Además: cabeceras que el JS del cliente puede leer en la respuesta si las necesita.
+        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowCredentials(true);
+        // Además: cache del preflight en el navegador (segundos).
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
     // Cargar los datos del usuario desde tu sistema a través de UsuarioRepository
     //lo utiliza AuthenticationService. para buscar el email
@@ -77,6 +118,7 @@ public class SecurityConfig {
      * - Salida: Authentication completamente autenticado con authorities
      * 
      * Si la autenticación falla, lanza AuthenticationException
+     * <p><b>Además:</b> en el login, {@code BadCredentialsException} puede mapearse a 401 vía {@code GlobalExceptionHandler}.</p>
      */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -92,7 +134,8 @@ public class SecurityConfig {
 
     // Configura las reglas de seguridad para las diferentes rutas de la API
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource)
+            throws Exception {
         // http
         //         .csrf(csrf -> csrf.disable())
         //         .authorizeHttpRequests(auth -> auth
@@ -102,7 +145,9 @@ public class SecurityConfig {
 
         // return http.build();
 
+        // Además: activamos CORS con el bean de arriba (inyectado para usar la misma instancia en toda la cadena).
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
                 // Sin esto, Spring Security responde 401/403 con HTML o cuerpo vacío; así la API devuelve JSON como el resto de errores
                 .exceptionHandling(ex -> ex
@@ -145,6 +190,7 @@ public class SecurityConfig {
                         // Si el token es válido: El filtro establece la autenticación en el SecurityContext y llama a filterChain.doFilter(request, response) para pasar la solicitud al siguiente filtro y, finalmente, al controlador.
                         // Si el token falta o es inválido: El filtro rechaza la solicitud  o deja que la cadena continúe si el endpoint es público.
                         // Llegada al Controlador: Si el filtro permite el paso, la solicitud finalmente llega a su controlador.
+                        // Además: si el endpoint exige authenticated y no hay JWT válido, el flujo termina en 401 JSON (RestSecurityErrorHandler).
                         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

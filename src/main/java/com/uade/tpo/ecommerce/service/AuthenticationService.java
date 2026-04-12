@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.uade.tpo.ecommerce.dto.LoginRequestDTO;
 import com.uade.tpo.ecommerce.dto.RegisterRequestDTO;
-import com.uade.tpo.ecommerce.exception.ArgumentInvalidException;
+import com.uade.tpo.ecommerce.exception.ConflictException;
 import com.uade.tpo.ecommerce.model.Role;
 import com.uade.tpo.ecommerce.model.Usuario;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
@@ -53,7 +53,7 @@ public class AuthenticationService {
      *                - email: email único del usuario (validado en PASO 1)
      *                - password: contraseña en texto plano que será encriptada
      * @return "User registered successfully" - mensaje de confirmación del registro exitoso
-     * @throws ArgumentInvalidException si el email ya existe en el sistema (400, categoría argumento inválido / conflicto de registro)
+     * @throws ConflictException si el email ya existe en el sistema (409)
      */
     public String register(RegisterRequestDTO request) {
 
@@ -62,8 +62,7 @@ public class AuthenticationService {
         // Esto evita duplicados y garantiza que cada usuario tenga un identificador único.
         // Se utiliza el método existsByEmail() del repositorio para una consulta eficiente.
         if (usuarioRepository.existsByEmail(request.getEmail())) {
-            // Se usa ArgumentInvalidException (manejada globalmente) para respuestas HTTP 400 coherentes
-            throw new ArgumentInvalidException("El email ya existe en la base de datos");
+            throw new ConflictException("El email ya está registrado");
         }
 
         // ==================== PASO 2: CONSTRUCCIÓN DEL OBJETO USUARIO ====================

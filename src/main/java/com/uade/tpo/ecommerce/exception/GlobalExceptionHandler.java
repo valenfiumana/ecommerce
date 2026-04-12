@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,6 +42,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ArgumentInvalidException.class)
     public ResponseEntity<ErrorResponseDTO> manejarArgumentoInvalidoNegocio(ArgumentInvalidException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Conflicto de estado, p. ej. email ya registrado (registro duplicado). HTTP 409.
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarConflicto(ConflictException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    /**
+     * Login con email o contraseña incorrectos (Spring Security).
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarCredencialesInvalidas(BadCredentialsException ex) {
+        return build(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
     }
 
     /**
