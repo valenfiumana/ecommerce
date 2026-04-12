@@ -48,6 +48,10 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     @EntityGraph(attributePaths = "vendedor")
     @Query("SELECT p FROM Producto p WHERE p.id = :id")
     Optional<Producto> findDetailById(@Param("id") Long id);
+
+    /** Productos publicados por un usuario (perfil / mis publicaciones). */
+    List<Producto> findByVendedor_IdOrderByIdDesc(Long vendedorId);
+
     
     //findByPrecioBetween(Double minPrecio, Double maxPrecio); 
     // la instrucción SQL sería: select * from productos where precio between minPrecio and maxPrecio

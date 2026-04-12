@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Ecommerce API",
-    "description": "Colección alineada al código actual (Spring Boot + JWT).\n\n**Variables:** `baseUrl`, `jwt`, `jwtUsuarioA`, `jwtUsuarioB`, `productId`, `cartLineId`.\n\n**TXT:** `postman/curls-auth-y-seguridad.txt`, `postman/curls-productos-vendedor.txt`, `postman/curls-carrito.txt`.\n\n**Notas:** `GET /api/usuarios` stub (501). No hay bulk de productos ni pedidos en este repo.",
+    "description": "Colección alineada al código actual (Spring Boot + JWT).\n\n**Variables:** `baseUrl`, `jwt`, `jwtUsuarioA`, `jwtUsuarioB`, `productId`, `cartLineId`.\n\n**TXT:** `postman/curls-perfil-y-auth.txt`, `postman/curls-carrito.txt`.\n\n**Notas:** `GET /api/usuarios` stub (501). `GET/PATCH /api/usuarios/me` incluye `publicaciones` y `compras` (compras vacías hasta pedidos). No hay bulk de productos ni pedidos en este repo.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

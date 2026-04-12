@@ -1,0 +1,94 @@
+# CURLs — autenticación + perfil (/api/auth, /api/usuarios/me, /api/productos)
+#
+# Base: http://localhost:8080
+#
+# El login devuelve el JWT como cuerpo de texto plano (no JSON). Copiá el token a PEGAR_JWT
+# o en Git Bash:  export JWT='eyJ...'
+#
+# Formato con "\" al final de línea = Git Bash / macOS / Linux. En CMD también suele funcionar.
+# En PowerShell nativo, usá una sola línea por comando o `curl.exe` con comillas simples externas.
+#
+# Orden sugerido (flujo nuevo usuario):
+#   1) Register → 2) Login → 3) GET /me (publicaciones vacías, compras []) → 4) POST producto
+#   5) GET /me otra vez (publicaciones con 1 ítem) → 6) PATCH /me
+#
+# Usuario seed (data.sql): seed-demo@local.dev / Secret1234 — ya trae varias publicaciones en GET /me.
+
+# =============================================================================
+# 1) Registro — rol USER por defecto; cambiá el email si ya existe (409)
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d "{\"nombre\":\"Curl\",\"apellido\":\"Tester\",\"email\":\"curl-perfil-demo@example.com\",\"password\":\"Secret1234\",\"fechaNacimiento\":\"1998-06-01\",\"sexo\":\"OTRO\"}"
+
+# =============================================================================
+# 2) Login — respuesta = solo el JWT (200)
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"curl-perfil-demo@example.com\",\"password\":\"Secret1234\"}"
+
+# Mismo login en una línea (útil en PowerShell)
+# curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"curl-perfil-demo@example.com\",\"password\":\"Secret1234\"}"
+
+# =============================================================================
+# 3) GET perfil — JSON con id, email, role, publicaciones[], compras[]
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" "http://localhost:8080/api/usuarios/me" \
+  -H "Authorization: Bearer PEGAR_JWT"
+
+# =============================================================================
+# 4) POST producto — el vendedor sale del token; luego GET /me debe listar la publicación
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/productos" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"nombre\":\"Producto desde curl\",\"descripcion\":\"Test perfil\",\"precio\":10.5,\"stock\":2}"
+
+# =============================================================================
+# 5) GET perfil de nuevo — ver publicaciones (id, nombre, precio, stock)
+# =============================================================================
+curl -s "http://localhost:8080/api/usuarios/me" \
+  -H "Authorization: Bearer PEGAR_JWT"
+
+# =============================================================================
+# 6) PATCH perfil parcial — solo campos enviados; no incluye password en la respuesta
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X PATCH "http://localhost:8080/api/usuarios/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"nombre\":\"Curl Actualizado\"}"
+
+# =============================================================================
+# 7) PATCH con email ya usado por otro usuario — esperado 409 (registrá otro email antes)
+#     Secuencia: registrar curl-perfil-otro@example.com, login con curl-perfil-demo@,
+#     PATCH email a curl-perfil-otro@example.com
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X PATCH "http://localhost:8080/api/usuarios/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"email\":\"seed-demo@local.dev\"}"
+
+# =============================================================================
+# 8) GET /me sin token — esperado 401
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" "http://localhost:8080/api/usuarios/me"
+
+# =============================================================================
+# 9) Login usuario seed — muchas publicaciones en GET /me (productos de data.sql)
+# =============================================================================
+curl -s -X POST "http://localhost:8080/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"seed-demo@local.dev\",\"password\":\"Secret1234\"}"
+
+# =============================================================================
+# 10) Catálogo público (sin JWT) — referencia cruzada con carrito / catálogo
+# =============================================================================
+curl -s "http://localhost:8080/api/productos"
+
+# =============================================================================
+# 11) Login admin seed (opcional)
+# =============================================================================
+curl -s -X POST "http://localhost:8080/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"seed-admin@local.dev\",\"password\":\"Secret1234\"}"

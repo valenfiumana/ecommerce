@@ -3,6 +3,8 @@
 # Equivalente en Postman: carpeta "Carrito — curls-carrito" en
 #   postman/Ecommerce-Productos.postman_collection.json
 #
+# Perfil y auth: postman/curls-perfil-y-auth.txt
+#
 # Base: http://localhost:8080. Todas las rutas /api/cart exigen Authorization: Bearer <JWT>.
 #
 # Orden sugerido:

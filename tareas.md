@@ -404,8 +404,8 @@ Datos editables y permisos claros según rol.
 **Qué hacer**
 
 - GET/PATCH perfil del usuario actual (nombre, apellido, etc.; **no** exponer password en responses).
-- Documentar qué puede hacer `USER`, `VENDEDOR`, `ADMIN` (tabla en README).
-- Opcional: endpoint “solicitar ser vendedor” o asignación por admin.
+- Documentar qué puede hacer `USER` y `ADMIN` (tabla en README); `USER` compra y vende (publicaciones propias).
+- Perfil: `GET /api/usuarios/me` incluye `publicaciones` y `compras` (compras vacías hasta pedidos).
 
 **Implementación sugerida (usuario + JWT — base de cuenta)**
 
@@ -421,7 +421,7 @@ Datos editables y permisos claros según rol.
 - **Contrato API:** `UserProfileResponseDTO` (sin `password` ni campos internos); `UserProfileUpdateRequestDTO` con campos opcionales (`@Size`, `@Email` si permiten cambiar email).
 - **Mapeo:** `UsuarioMapper.updateFromDto(dto, entidad)` ignorando nulls o con estrategia clara (PATCH parcial).
 - **Lógica:** `UserService.getMe`, `UserService.updateMe` — cargar usuario por email del JWT; si cambian email, `existsByEmail` y `ConflictException`.
-- **HTTP:** `GET /api/usuarios/me`, `PATCH /api/usuarios/me` (o `PUT` si prefieren reemplazo completo); opcional `POST /api/usuarios/me/solicitar-vendedor` que setee flag o cree solicitud (coherente con `@RequestMapping("/api/usuarios")` del controlador de usuarios).
+- **HTTP:** `GET /api/usuarios/me`, `PATCH /api/usuarios/me` (o `PUT` si prefieren reemplazo completo).
 - **Seguridad:** autenticado; nunca `GET/PATCH /api/usuarios/{id}` para terceros salvo admin explícito.
 - **Errores:** `ResourceNotFoundException`, `ConflictException` (email duplicado), validación Bean Validation → **400**.
 - **Tests (opcional):** `PATCH /me` con JWT; sin token → **401**; email ya usado → **409**.
