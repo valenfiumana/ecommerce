@@ -21,7 +21,6 @@ import com.uade.tpo.ecommerce.service.ProductoService;
 
 import jakarta.validation.Valid;
 
-//TODO: cambiar todos los métodos para que devuelvan ResponseEntity, es mala práctica devolver la entidad directamente, debe devolver un DTO
 @RestController
 // para acceder a este controlador, la URL base será /api/productos
 // http://localhost:8080/api/productos -> devuelve la lista de productos
@@ -38,29 +37,14 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.getAllProductos());
     }
 
-    // //http://localhost:8080/api/productos/1 -> devuelve el producto con id 1
-    // @GetMapping("/{id}")
-    // public Producto getProductoById(@PathVariable Long id) {
-    //     return productoService.getProductoById(id);
-    // }
-
-
-    
+    // GET /api/productos/{id} — catálogo público, cuerpo = ProductoResponseDTO.
     @GetMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> getProductoById(@PathVariable Long id) {
-        ProductoResponseDTO productoResponse = productoService.getProductoById(id);
-
-        // Se crea una nueva instancia de ResponseEntity, pasando el producto encontrado como cuerpo de la respuesta
-        // y HttpStatus.OK (código 200) como estado de la respuesta.
-
-        //ResponseEntity es una clase que representa toda la respuesta HTTP: código de estado, encabezados y cuerpo.
-        //devuelve una promesa en el cuerpo los datos del producto, y un codigo de estado 200 (OK)
-        // el cuerpo es un json productos -> json
-        //TODO: ssanchez - devolver en todos los enpoints ResponseEntity con DTO correspondiente
-        return new ResponseEntity<>(productoResponse, HttpStatus.OK);
+        return ResponseEntity.ok(productoService.getProductoById(id));
     }
 
 
+    // DELETE /api/productos/{id} — solo dueño o admin (servicio).
     // del http://localhost:8080/api/productos/1 -> elimina el producto con id 1
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProductoById(@PathVariable Long id) {
@@ -68,6 +52,7 @@ public class ProductoController {
         return ResponseEntity.noContent().build();
     }
 
+    // POST /api/productos — vendedor = usuario del JWT (@Valid en el DTO).
     // @Valid: dispara la validación Jakarta Bean Validation definida en el DTO (anotaciones como @NotNull, @NotBlank)
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> saveProducto(@Valid @RequestBody ProductoCreateRequestDTO request) {
@@ -75,6 +60,7 @@ public class ProductoController {
         return new ResponseEntity<>(savedProducto, HttpStatus.CREATED);
     }
     
+    // PUT /api/productos/{id} — solo dueño o admin (lo decide el servicio).
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> updateProducto(
             @PathVariable Long id,

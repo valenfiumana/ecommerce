@@ -36,7 +36,7 @@ En un marketplace, un producto no “flota solo”: alguien lo publica y es resp
 
 ---
 
-### 2. Carrito (sesión o usuario)
+### 2. Carrito (sesión o usuario) (DONE Valen)
 
 **Objetivo**  
 El usuario arma la compra antes de pagar, sin comprometer stock definitivo hasta el checkout (según cómo lo definan).
@@ -433,7 +433,7 @@ Datos editables y permisos claros según rol.
 
 ---
 
-### 15. Favoritos / guardados (opcional)
+### 15. Favoritos / guardados 
 
 **Objetivo**  
 Guardar publicaciones para después.

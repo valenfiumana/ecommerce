@@ -19,6 +19,7 @@ import com.uade.tpo.ecommerce.dto.ErrorResponseDTO;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Arma el mismo JSON de error para todos los handlers de abajo.
     private ResponseEntity<ErrorResponseDTO> build(HttpStatus status, String message) {
         ErrorResponseDTO body = ErrorResponseDTO.builder()
                 .timestamp(Instant.now())
@@ -42,6 +43,12 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ArgumentInvalidException.class)
     public ResponseEntity<ErrorResponseDTO> manejarArgumentoInvalidoNegocio(ArgumentInvalidException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // Regla de negocio (ej. stock en carrito). 400.
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarReglaDeNegocio(BusinessRuleException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
@@ -94,11 +101,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Cuerpo de la solicitud inválido o mal formado");
     }
 
+    // Argumentos ilegales genéricos de Java → 400 con el mensaje.
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> manejarArgumentoInvalido(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // Red de seguridad: cualquier otra excepción no mapeada → 500 (en prod conviene no filtrar el mensaje).
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> manejarErroresGenerales(Exception ex) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno: " + ex.getMessage());

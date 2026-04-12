@@ -48,6 +48,7 @@ public class ProductoService {
     }
 
     public ProductoResponseDTO getProductoById(Long id) {
+        // findDetailById incluye vendedor para armar vendedorId / vendedorNombre en el DTO.
         Producto producto = productoRepository.findDetailById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(RECURSO_PRODUCTO, id));
         return toResponse(producto);
@@ -66,6 +67,7 @@ public class ProductoService {
         // Nunca tomar vendedorId del JSON: el cliente podría falsificarlo; el dueño es quien trae el Bearer válido
         Usuario vendedor = requireUsuarioAutenticado();
 
+        // Alta nueva: el vendedor queda grabado en la fila del producto.
         Producto producto = Producto.builder()
                 .nombre(request.getNombre())
                 .descripcion(request.getDescripcion())
@@ -86,6 +88,7 @@ public class ProductoService {
         // No se transfiere la titularidad por PUT: el vendedor_id existente se mantiene; solo dueño/admin editan otros campos
         assertDueñoOAdmin(existente, requireUsuarioAutenticado());
 
+        // Solo datos de catálogo; el vendedor_id no se toca en este flujo.
         existente.setNombre(request.getNombre());
         existente.setDescripcion(request.getDescripcion());
         existente.setPrecio(request.getPrecio());
@@ -95,6 +98,7 @@ public class ProductoService {
     }
 
     private void validarPrecioYStock(Double precio, Integer stock) {
+        // Reglas extra además del @Valid del DTO (por si se llama desde otro lado).
         if (precio != null && precio <= 0) {
             throw new ArgumentInvalidException("El precio debe ser mayor que cero");
         }
@@ -116,6 +120,7 @@ public class ProductoService {
                 || auth.getName() == null) {
             throw new AccessDeniedException("Se requiere un usuario autenticado.");
         }
+        // auth.getName() es el email (JwtFilter / login).
         return usuarioRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado."));
     }
@@ -126,6 +131,7 @@ public class ProductoService {
         if (auth == null) {
             return false;
         }
+        // Comparación exacta con el string que viene en el token.
         return auth.getAuthorities().stream().anyMatch(a -> ROLE_ADMIN.equals(a.getAuthority()));
     }
 
@@ -134,10 +140,11 @@ public class ProductoService {
      */
     private void assertDueñoOAdmin(Producto producto, Usuario actor) {
         if (isAdmin()) {
-            return;
+            return; // Admin puede tocar cualquier publicación.
         }
         Usuario vendedor = producto.getVendedor();
         if (vendedor == null) {
+            // Producto viejo sin vendedor en BD: no dejamos que un USER normal lo edite.
             throw new AccessDeniedException("Solo un administrador puede modificar este producto.");
         }
         if (!vendedor.getId().equals(actor.getId())) {
@@ -148,6 +155,7 @@ public class ProductoService {
     /** Arma el DTO de respuesta; campos de vendedor null si el producto es legado sin FK. */
     private ProductoResponseDTO toResponse(Producto producto) {
         Usuario v = producto.getVendedor();
+        // No exponemos email del vendedor en el catálogo.
         return ProductoResponseDTO.builder()
                 .id(producto.getId())
                 .nombre(producto.getNombre())
@@ -165,6 +173,7 @@ public class ProductoService {
     private static String nombreVisibleVendedor(Usuario u) {
         if (u.getNombre() != null && !u.getNombre().isBlank()) {
             if (u.getApellido() != null && !u.getApellido().isBlank()) {
+                // Ej: "Ana G." en lugar del apellido completo.
                 return u.getNombre().trim() + " " + u.getApellido().trim().charAt(0) + ".";
             }
             return u.getNombre().trim();

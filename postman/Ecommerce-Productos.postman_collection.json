@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Ecommerce API",
-    "description": "Colección alineada al código actual (Spring Boot + JWT).\n\n**Variables de colección:** `baseUrl`, `jwt` (token genérico), `jwtUsuarioA`, `jwtUsuarioB`, `productId`.\n\n**Origen de los flujos:** equivalentes a `postman/curls-auth-y-seguridad.txt` y `postman/curls-productos-vendedor.txt` (tras login pegá el JWT en la variable indicada).\n\n**Notas:** `GET /api/usuarios` está stub (501). No existen `/api/productos/bulk` ni `/api/pedidos` en este proyecto.",
+    "description": "Colección alineada al código actual (Spring Boot + JWT).\n\n**Variables:** `baseUrl`, `jwt`, `jwtUsuarioA`, `jwtUsuarioB`, `productId`, `cartLineId`.\n\n**TXT:** `postman/curls-auth-y-seguridad.txt`, `postman/curls-productos-vendedor.txt`, `postman/curls-carrito.txt`.\n\n**Notas:** `GET /api/usuarios` stub (501). No hay bulk de productos ni pedidos en este repo.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -9,7 +9,8 @@
     { "key": "jwt", "value": "" },
     { "key": "jwtUsuarioA", "value": "" },
     { "key": "jwtUsuarioB", "value": "" },
-    { "key": "productId", "value": "1" }
+    { "key": "productId", "value": "1" },
+    { "key": "cartLineId", "value": "1", "description": "Id de la fila en carrito_items (respuesta GET /api/cart), para DELETE /api/cart/{id}" }
   ],
   "item": [
     {
@@ -239,6 +240,196 @@
             },
             "url": "{{baseUrl}}/api/productos",
             "description": "Sin Authorization. Esperado: 401."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Carrito — curls-carrito",
+      "description": "Flujo en `postman/curls-carrito.txt`. Necesitás `jwt` y `productId`. Para DELETE: `cartLineId` = campo `id` de una línea del array (no es el productId).",
+      "item": [
+        {
+          "name": "00 Login seed (data.sql)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-demo@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Copiá el JWT a `jwt`. Sin seed, usá login de la carpeta Auth (mismo usuario que quieras de comprador)."
+          },
+          "response": []
+        },
+        {
+          "name": "01 GET productos (elegir productId)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/productos",
+            "description": "Público. Elegí un id con stock y poneló en la variable `productId`."
+          },
+          "response": []
+        },
+        {
+          "name": "02 GET cart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Carrito del usuario del token. 200 con [] si está vacío."
+          },
+          "response": []
+        },
+        {
+          "name": "03 POST cart agregar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Suma unidades; merge si ya había línea. Copiá el `id` de la línea a `cartLineId` para el request 08."
+          },
+          "response": []
+        },
+        {
+          "name": "04 POST cart merge (+1)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Suma encima de la misma línea (mismo productId)."
+          },
+          "response": []
+        },
+        {
+          "name": "05 PUT cart cantidad exacta",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Fija la cantidad; no puede ser mayor al stock del producto."
+          },
+          "response": []
+        },
+        {
+          "name": "06 PUT cart quantity 0 (borrar línea)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 0\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Borra la línea de ese producto en el carrito."
+          },
+          "response": []
+        },
+        {
+          "name": "07 POST cart (preparar DELETE)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Agregá de nuevo para tener una línea y probar el DELETE por id."
+          },
+          "response": []
+        },
+        {
+          "name": "08 DELETE cart línea por id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart/{{cartLineId}}",
+            "description": "URL: id de la fila `carrito_items`, no el productId."
+          },
+          "response": []
+        },
+        {
+          "name": "09 GET cart sin token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Sin Authorization. Esperado: 401."
+          },
+          "response": []
+        },
+        {
+          "name": "10 POST cart sin token (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"quantity\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Sin Bearer. 401."
+          },
+          "response": []
+        },
+        {
+          "name": "11 POST cart stock insuficiente (400)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 999999\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "400 si la cantidad supera el stock (BusinessRuleException)."
           },
           "response": []
         }

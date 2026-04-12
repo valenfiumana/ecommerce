@@ -1,0 +1,105 @@
+# CURLs — carrito (/api/cart)
+#
+# Equivalente en Postman: carpeta "Carrito — curls-carrito" en
+#   postman/Ecommerce-Productos.postman_collection.json
+#
+# Base: http://localhost:8080. Todas las rutas /api/cart exigen Authorization: Bearer <JWT>.
+#
+# Orden sugerido:
+#   1) Login (usuario comprador; puede ser seed-demo@local.dev / Secret1234 si cargaste data.sql).
+#   2) GET /api/productos y elegir un productId con stock > 0.
+#   3) POST agregar, GET listar, PUT actualizar, DELETE por id de línea.
+#
+# Variables útiles (Git Bash): export JWT='...'  export PID=1  export LINE_ID=5
+
+# =============================================================================
+# 0) Login — el body de la respuesta ES el JWT (copialo a PEGAR_JWT o export JWT='...')
+# =============================================================================
+
+# Opción A — usuario seed de data.sql (comprador con productos de ejemplo)
+curl -s -X POST "http://localhost:8080/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"seed-demo@local.dev\",\"password\":\"Secret1234\"}"
+
+# Opción B — si registraste antes a test-postman@example.com (misma clave que en curls-auth)
+curl -s -X POST "http://localhost:8080/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"test-postman@example.com\",\"password\":\"Secret1234\"}"
+
+# =============================================================================
+# 1) Catálogo público — elegir un "id" de producto con stock (→ PID)
+# =============================================================================
+curl -s "http://localhost:8080/api/productos"
+
+# =============================================================================
+# 2) Ver carrito vacío o con ítems — 200 + JSON array
+# =============================================================================
+curl -s "http://localhost:8080/api/cart" \
+  -H "Authorization: Bearer PEGAR_JWT"
+
+# =============================================================================
+# 3) Agregar 2 unidades del producto PID (reemplazá 1 por el id real)
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":2}"
+
+# =============================================================================
+# 4) Mismo POST otra vez — merge: suma cantidad si ya existía la línea (no pasar del stock)
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":1}"
+
+# =============================================================================
+# 5) PUT — fijar cantidad exacta (ej. 2 unidades) para ese productId
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":2}"
+
+# =============================================================================
+# 6) PUT con quantity 0 — borra la línea de ese producto (si existía)
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":0}"
+
+# =============================================================================
+# 7) Volver a agregar 1 unidad para tener una línea y poder probar DELETE
+# =============================================================================
+curl -s -X POST "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":1}"
+
+# =============================================================================
+# 8) DELETE por id de LÍNEA del carrito (campo "id" del ítem en el JSON del GET), no es el productId
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X DELETE "http://localhost:8080/api/cart/PEGAR_LINE_ID" \
+  -H "Authorization: Bearer PEGAR_JWT"
+
+# =============================================================================
+# 9) GET carrito sin token — esperado 401
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" "http://localhost:8080/api/cart"
+
+# =============================================================================
+# 10) POST carrito sin token — esperado 401
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -d "{\"productId\":1,\"quantity\":1}"
+
+# =============================================================================
+# 11) Stock insuficiente — pedir más de lo que hay (400 + JSON)
+#     Ajustá productId y quantity a un producto con poco stock
+# =============================================================================
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "http://localhost:8080/api/cart" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PEGAR_JWT" \
+  -d "{\"productId\":1,\"quantity\":99999}"

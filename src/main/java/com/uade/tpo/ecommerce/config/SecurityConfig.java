@@ -35,6 +35,7 @@ import lombok.RequiredArgsConstructor;
  * <p>Orden de {@code requestMatchers}: Spring aplica la <i>primera</i> regla que coincida (de arriba hacia abajo).</p>
  * <p>GET {@code /api/productos} es público; POST/PUT/DELETE requieren JWT. La autorización “dueño o admin”
  * se aplica en {@link com.uade.tpo.ecommerce.service.ProductoService} (no se confía en un {@code vendedorId} del body).</p>
+ * <p>El carrito ({@code /api/cart}) pide JWT en todos los métodos.</p>
  */
 // Indica que esta clase contiene configuraciones de Spring
 @Configuration
@@ -168,6 +169,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/productos/**").authenticated()
                         //solo los usuarios autenticados pueden eliminar un producto
                         .requestMatchers(HttpMethod.DELETE, "/api/productos/**").authenticated()
+
+                        // Carrito: con token
+                        .requestMatchers("/api/cart/**").authenticated()
 
                         // Rutas exclusivas para administradores
                         //verifica que el usuario esté autenticado y tenga el rol ADMIN
