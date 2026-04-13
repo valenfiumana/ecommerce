@@ -281,7 +281,7 @@ El total del pedido = productos + envío, sin integrar correo real.
 
 ## Epic: Experiencia tipo marketplace
 
-### 10. Búsqueda y filtros
+### 10. Búsqueda y filtros (Caro In Progress)
 
 **Objetivo**  
 Encontrar publicaciones como en un buscador real.
