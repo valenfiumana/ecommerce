@@ -160,7 +160,7 @@ No vender lo que no hay; con varios usuarios a la vez, evitar “overselling”.
 
 ---
 
-### 6. Historial: “mis compras” y “mis ventas” (Caro In Progress)
+### 6. Historial: “mis compras” y “mis ventas” (Caro DONE)
 
 **Objetivo**  
 Cada rol ve lo que le corresponde.
