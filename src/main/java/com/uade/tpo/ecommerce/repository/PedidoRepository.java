@@ -2,6 +2,8 @@ package com.uade.tpo.ecommerce.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,4 +17,31 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
      */
     @Query("SELECT p FROM Pedido p WHERE p.comprador.id = :compradorId ORDER BY p.fecha DESC")
     List<Pedido> findByCompradorIdOrderByFechaDesc(@Param("compradorId") Long compradorId);
+
+    /**
+     * Compras del usuario autenticado con paginación.
+     * Pageable permite page/size/sort desde el request.
+     */
+    Page<Pedido> findByCompradorId(Long compradorId, Pageable pageable);
+
+    /**
+     * Ventas del usuario autenticado: un pedido aparece una sola vez aunque tenga
+     * varias líneas del mismo vendedor, por eso usamos DISTINCT.
+     */
+    @Query(
+            value = """
+                    SELECT DISTINCT p
+                    FROM Pedido p
+                    JOIN p.items item
+                    JOIN item.producto prod
+                    WHERE prod.vendedor.id = :vendedorId
+                    """,
+            countQuery = """
+                    SELECT COUNT(DISTINCT p.id)
+                    FROM Pedido p
+                    JOIN p.items item
+                    JOIN item.producto prod
+                    WHERE prod.vendedor.id = :vendedorId
+                    """)
+    Page<Pedido> findVentasByVendedorId(@Param("vendedorId") Long vendedorId, Pageable pageable);
 }

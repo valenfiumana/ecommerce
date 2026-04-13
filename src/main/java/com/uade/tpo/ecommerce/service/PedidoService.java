@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 import com.uade.tpo.ecommerce.dto.pedido.CambioEstadoRequestDTO;
 import com.uade.tpo.ecommerce.dto.pedido.CheckoutRequestDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoResponseDTO;
+import com.uade.tpo.ecommerce.dto.pedido.PedidoSummaryResponseDTO;
 import com.uade.tpo.ecommerce.exception.BusinessRuleException;
 import com.uade.tpo.ecommerce.exception.ResourceNotFoundException;
 import com.uade.tpo.ecommerce.model.CarritoItem;
@@ -145,6 +150,30 @@ public class PedidoService {
         return pedidoMapper.toDTOList(pedidos);
     }
 
+    /**
+     * Historial paginado de compras del usuario autenticado.
+     * Nunca acepta un compradorId externo: el filtro siempre sale del JWT.
+     */
+    public Page<PedidoSummaryResponseDTO> listarMisCompras(Pageable pageable) {
+        Usuario usuario = requireUsuarioAutenticado();
+        Page<Pedido> pedidos = pedidoRepository.findByCompradorId(
+                usuario.getId(),
+                normalizarPageable(pageable));
+        return pedidoMapper.toSummaryPage(pedidos);
+    }
+
+    /**
+     * Historial paginado de ventas del usuario autenticado.
+     * Un pedido aparece si al menos una línea pertenece a una publicación del vendedor.
+     */
+    public Page<PedidoSummaryResponseDTO> listarMisVentas(Pageable pageable) {
+        Usuario usuario = requireUsuarioAutenticado();
+        Page<Pedido> pedidos = pedidoRepository.findVentasByVendedorId(
+                usuario.getId(),
+                normalizarPageable(pageable));
+        return pedidoMapper.toSummaryPage(pedidos);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // CAMBIO DE ESTADO
     // ──────────────────────────────────────────────────────────────────────────
@@ -198,5 +227,22 @@ public class PedidoService {
 
     private boolean esAdmin(Usuario usuario) {
         return Role.ADMIN.equals(usuario.getRole());
+    }
+
+    private Pageable normalizarPageable(Pageable pageable) {
+        if (pageable == null) {
+            return PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "fecha"));
+        }
+
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+
+        // Si el cliente no manda sort, aplicamos fecha desc para que el historial
+        // salga de más reciente a más antiguo.
+        return PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "fecha"));
     }
 }

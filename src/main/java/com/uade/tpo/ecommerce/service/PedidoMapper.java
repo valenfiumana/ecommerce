@@ -3,10 +3,12 @@ package com.uade.tpo.ecommerce.service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import com.uade.tpo.ecommerce.dto.pedido.PedidoItemResponseDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoResponseDTO;
+import com.uade.tpo.ecommerce.dto.pedido.PedidoSummaryResponseDTO;
 import com.uade.tpo.ecommerce.model.Pedido;
 import com.uade.tpo.ecommerce.model.PedidoItem;
 
@@ -35,6 +37,26 @@ public class PedidoMapper {
 
     public List<PedidoResponseDTO> toDTOList(List<Pedido> pedidos) {
         return pedidos.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    public PedidoSummaryResponseDTO toSummaryDTO(Pedido pedido) {
+        // En el historial mostramos la cantidad total de unidades compradas/vendidas,
+        // no solo la cantidad de líneas del pedido.
+        int cantidadItems = pedido.getItems().stream()
+                .mapToInt(PedidoItem::getCantidad)
+                .sum();
+
+        return PedidoSummaryResponseDTO.builder()
+                .id(pedido.getId())
+                .fecha(pedido.getFecha())
+                .total(pedido.getTotal())
+                .estado(pedido.getEstado())
+                .cantidadItems(cantidadItems)
+                .build();
+    }
+
+    public Page<PedidoSummaryResponseDTO> toSummaryPage(Page<Pedido> pedidos) {
+        return pedidos.map(this::toSummaryDTO);
     }
 
     private PedidoItemResponseDTO toItemDTO(PedidoItem item) {
