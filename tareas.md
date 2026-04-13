@@ -189,9 +189,9 @@ Cada rol ve lo que le corresponde.
 
 ---
 
-## Epic: Pagos y envíos (simplificados)
+## Epic: Pagos y envíos (simplificados) 
 
-### 7. Pago mock o sandbox
+### 7. Pago mock o sandbox (Rama In Progress)
 
 **Objetivo**  
 Cerrar el flujo sin integrar bancos al principio; después reemplazar por Mercado Pago si quieren.
@@ -225,7 +225,7 @@ Cerrar el flujo sin integrar bancos al principio; después reemplazar por Mercad
 
 ---
 
-### 8. Direcciones de envío (CRUD + checkout)
+### 8. Direcciones de envío (CRUD + checkout) (Rama In Progress)
 
 **Objetivo**  
 Saber a dónde mandar el paquete (aunque el envío sea ficticio).
