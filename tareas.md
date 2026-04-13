@@ -132,7 +132,7 @@ Todos entienden en qué etapa está la compra (como en ML: pagaste, enviaron, ll
 
 ---
 
-### 5. Stock
+### 5. Stock (Marian In Progress)
 
 **Objetivo**  
 No vender lo que no hay; con varios usuarios a la vez, evitar “overselling”.
@@ -160,7 +160,7 @@ No vender lo que no hay; con varios usuarios a la vez, evitar “overselling”.
 
 ---
 
-### 6. Historial: “mis compras” y “mis ventas”
+### 6. Historial: “mis compras” y “mis ventas” (Caro In Progress)
 
 **Objetivo**  
 Cada rol ve lo que le corresponde.
