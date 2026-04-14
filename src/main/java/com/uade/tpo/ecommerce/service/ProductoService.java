@@ -4,12 +4,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.uade.tpo.ecommerce.dto.producto.BusquedaProductoCriteria;
+import com.uade.tpo.ecommerce.dto.producto.ProductoOrden;
 import com.uade.tpo.ecommerce.dto.producto.ProductoCreateRequestDTO;
 import com.uade.tpo.ecommerce.dto.producto.ProductoResponseDTO;
 import com.uade.tpo.ecommerce.dto.producto.ProductoUpdateRequestDTO;
@@ -18,6 +24,7 @@ import com.uade.tpo.ecommerce.exception.ResourceNotFoundException;
 import com.uade.tpo.ecommerce.model.Producto;
 import com.uade.tpo.ecommerce.model.Usuario;
 import com.uade.tpo.ecommerce.repository.ProductoRepository;
+import com.uade.tpo.ecommerce.repository.ProductoSpecifications;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
 
 import jakarta.transaction.Transactional;
@@ -52,6 +59,28 @@ public class ProductoService {
         Producto producto = productoRepository.findDetailById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(RECURSO_PRODUCTO, id));
         return toResponse(producto);
+    }
+
+    /**
+     * Búsqueda pública del catálogo con filtros combinables y paginación.
+     * Se usa una whitelist de orden para no exponer ordenamiento arbitrario por nombre de columna.
+     */
+    public Page<ProductoResponseDTO> buscar(BusquedaProductoCriteria criteria, int page, int size) {
+        validarBusqueda(criteria, page, size);
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                ProductoOrden.fromQueryParam(criteria.getOrden()).toSort());
+
+        Specification<Producto> spec = Specification
+                .where(ProductoSpecifications.textoLibre(criteria.getQ()))
+                .and(ProductoSpecifications.categoriaId(criteria.getCategoriaId()))
+                .and(ProductoSpecifications.precioMin(criteria.getPrecioMin()))
+                .and(ProductoSpecifications.precioMax(criteria.getPrecioMax()));
+
+        return productoRepository.findAll(spec, pageable)
+                .map(this::toResponse);
     }
 
     public void deleteProductoById(Long id) {
@@ -104,6 +133,30 @@ public class ProductoService {
         }
         if (stock != null && stock < 0) {
             throw new ArgumentInvalidException("El stock no puede ser negativo");
+        }
+    }
+
+    private void validarBusqueda(BusquedaProductoCriteria criteria, int page, int size) {
+        validarNoNegativo(page, "El parámetro page no puede ser negativo");
+        validarMayorQueCero(size, "El parámetro size debe ser mayor que cero");
+        validarNoNegativo(criteria.getPrecioMin(), "El parámetro precioMin no puede ser negativo");
+        validarNoNegativo(criteria.getPrecioMax(), "El parámetro precioMax no puede ser negativo");
+
+        if (criteria.getPrecioMin() != null && criteria.getPrecioMax() != null
+                && criteria.getPrecioMin() > criteria.getPrecioMax()) {
+            throw new ArgumentInvalidException("El parámetro precioMin no puede ser mayor que precioMax");
+        }
+    }
+
+    private void validarNoNegativo(Number value, String message) {
+        if (value != null && value.doubleValue() < 0) {
+            throw new ArgumentInvalidException(message);
+        }
+    }
+
+    private void validarMayorQueCero(int value, String message) {
+        if (value <= 0) {
+            throw new ArgumentInvalidException(message);
         }
     }
 

@@ -3,16 +3,20 @@ package com.uade.tpo.ecommerce.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import com.uade.tpo.ecommerce.model.Producto;
 
 // realiza todas la operaciones de CRUD sobre la tabla productos, gracias a que extiende de JpaRepository
 // minimiza el boiler plate, JpaRepository ya tiene implementados los métodos básicos de CRUD, por lo que no es necesario escribirlos manualmente
-public interface ProductoRepository extends JpaRepository<Producto, Long> {
+public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSpecificationExecutor<Producto> {
     //findAll() ya está implementado por JpaRepository, no es necesario definirlo aquí
     // select * from productos
 
@@ -51,6 +55,12 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     /** Productos publicados por un usuario (perfil / mis publicaciones). */
     List<Producto> findByVendedor_IdOrderByIdDesc(Long vendedorId);
+
+    /**
+     * Búsqueda paginada con vendedor precargado para armar el DTO sin N+1.
+     */
+    @EntityGraph(attributePaths = "vendedor")
+    Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
 
     
     //findByPrecioBetween(Double minPrecio, Double maxPrecio); 

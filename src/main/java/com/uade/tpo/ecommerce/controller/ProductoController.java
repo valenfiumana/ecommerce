@@ -3,6 +3,7 @@ package com.uade.tpo.ecommerce.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,8 +13,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.uade.tpo.ecommerce.dto.producto.BusquedaProductoCriteria;
 import com.uade.tpo.ecommerce.dto.producto.ProductoCreateRequestDTO;
 import com.uade.tpo.ecommerce.dto.producto.ProductoResponseDTO;
 import com.uade.tpo.ecommerce.dto.producto.ProductoUpdateRequestDTO;
@@ -35,6 +38,29 @@ public class ProductoController {
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> getAllProductos() {
         return ResponseEntity.ok(productoService.getAllProductos());
+    }
+
+    /**
+     * Buscador público del catálogo.
+     * Se separa de GET /api/productos para no romper el contrato existente del listado simple.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<ProductoResponseDTO>> buscarProductos(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Double precioMin,
+            @RequestParam(required = false) Double precioMax,
+            @RequestParam(required = false) String orden,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        BusquedaProductoCriteria criteria = BusquedaProductoCriteria.builder()
+                .q(q)
+                .categoriaId(categoriaId)
+                .precioMin(precioMin)
+                .precioMax(precioMax)
+                .orden(orden)
+                .build();
+        return ResponseEntity.ok(productoService.buscar(criteria, page, size));
     }
 
     // GET /api/productos/{id} — catálogo público, cuerpo = ProductoResponseDTO.
