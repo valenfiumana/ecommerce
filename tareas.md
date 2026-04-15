@@ -132,7 +132,7 @@ Todos entienden en qué etapa está la compra (como en ML: pagaste, enviaron, ll
 
 ---
 
-### 5. Stock (Marian In Progress)
+### 5. Stock (Marian DONE)
 
 **Objetivo**  
 No vender lo que no hay; con varios usuarios a la vez, evitar “overselling”.
