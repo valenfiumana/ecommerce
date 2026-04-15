@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
@@ -61,6 +62,18 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
      */
     @EntityGraph(attributePaths = "vendedor")
     Page<Producto> findAll(Specification<Producto> spec, Pageable pageable);
+
+    /**
+     * Descuenta stock de forma atómica y evita dejar stock negativo en concurrencia.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Producto p
+               SET p.stock = p.stock - :cantidad
+             WHERE p.id = :productoId
+               AND p.stock >= :cantidad
+            """)
+    int descontarStockSiAlcanza(@Param("productoId") Long productoId, @Param("cantidad") int cantidad);
 
     
     //findByPrecioBetween(Double minPrecio, Double maxPrecio); 

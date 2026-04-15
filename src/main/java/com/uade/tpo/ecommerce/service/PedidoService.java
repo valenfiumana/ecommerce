@@ -49,42 +49,39 @@ public class PedidoService {
     @Autowired
     private PedidoMapper pedidoMapper;
 
+    @Autowired
+    private StockService stockService;
 
-    
     public PedidoResponseDTO confirmarDesdeCarrito(CheckoutRequestDTO request) {
         Usuario comprador = requireUsuarioAutenticado();
 
-        //items actuales del carrito
         List<CarritoItem> carritoItems =
                 carritoItemRepository.findByUsuarioIdOrderByIdAscWithProducto(comprador.getId());
 
-        //Carrito vacío → 400 
         if (carritoItems.isEmpty()) {
             throw new BusinessRuleException(
-                    "El carrito está vacío. Agregá al menos un producto antes de confirmar el pedido.");
+                    "El carrito esta vacio. Agrega al menos un producto antes de confirmar el pedido.");
         }
 
-        //Construir líneas con snapshot de precio + validación de stock.
+        // El stock baja al confirmar el checkout, no al cambiar a PAGADO.
+        // Primero tomamos snapshot del pedido y luego descontamos stock de forma atomica
+        // dentro de esta misma transaccion para evitar overselling.
         List<PedidoItem> lineas = new ArrayList<>();
         double total = 0.0;
 
         for (CarritoItem ci : carritoItems) {
             if (ci.getProducto() == null) {
                 throw new ResourceNotFoundException(
-                        "Uno de los productos del carrito ya no existe en el catálogo.");
+                        "Uno de los productos del carrito ya no existe en el catalogo.");
             }
 
             int cantidadPedida = ci.getCantidad();
-            int stockActual = ci.getProducto().getStock() != null ? ci.getProducto().getStock() : 0;
-
-            // Validación de stock: mismo criterio que CarritoService.
-            if (cantidadPedida > stockActual) {
+            Integer stockPublicado = ci.getProducto().getStock();
+            if (stockPublicado == null || stockPublicado < 0) {
                 throw new BusinessRuleException(
-                        String.format("Stock insuficiente para '%s': hay %d disponibles y se pidieron %d.",
-                                ci.getProducto().getNombre(), stockActual, cantidadPedida));
+                        String.format("El producto '%s' no tiene stock disponible.", ci.getProducto().getNombre()));
             }
 
-            // Snapshot del precio: copiamos el valor actual del producto.
             double precioSnapshot = ci.getProducto().getPrecio();
             double subtotal = precioSnapshot * cantidadPedida;
             total += subtotal;
@@ -92,12 +89,18 @@ public class PedidoService {
             lineas.add(PedidoItem.builder()
                     .producto(ci.getProducto())
                     .cantidad(cantidadPedida)
-                    .precioUnitario(precioSnapshot) // ← snapshot guardado acá
+                    .precioUnitario(precioSnapshot)
                     .subtotal(subtotal)
                     .build());
         }
 
-        //Crear el pedido (sin id aún; cascade persiste los ítems junto con él)
+        for (CarritoItem ci : carritoItems) {
+            stockService.descontarStockParaCheckout(
+                    ci.getProducto().getId(),
+                    ci.getProducto().getNombre(),
+                    ci.getCantidad());
+        }
+
         Pedido pedido = Pedido.builder()
                 .comprador(comprador)
                 .fecha(LocalDateTime.now())
@@ -108,22 +111,17 @@ public class PedidoService {
                 .items(new ArrayList<>())
                 .build();
 
-        // Asignamos la FK bidireccional a cada línea antes de persistir
         for (PedidoItem item : lineas) {
             item.setPedido(pedido);
             pedido.getItems().add(item);
         }
 
-        //Persistir (cascade ALL guarda los PedidoItems automáticamente)
         pedidoRepository.save(pedido);
-
-        //Vaciar el carrito.
         carritoItemRepository.deleteAll(carritoItems);
 
         return pedidoMapper.toDTO(pedido);
     }
 
-    
     /**
      * Detalle de un pedido por id.
      * Solo el comprador del pedido o un ADMIN pueden verlo.
@@ -134,14 +132,14 @@ public class PedidoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido", pedidoId));
 
         if (!pedido.getComprador().getId().equals(usuario.getId()) && !esAdmin(usuario)) {
-            throw new AccessDeniedException("No tenés permiso para ver este pedido.");
+            throw new AccessDeniedException("No tenes permiso para ver este pedido.");
         }
 
         return pedidoMapper.toDTO(pedido);
     }
 
     /**
-     * Historial de pedidos del usuario autenticado, del más reciente al más antiguo.
+     * Historial de pedidos del usuario autenticado, del mas reciente al mas antiguo.
      */
     public List<PedidoResponseDTO> misPedidos() {
         Usuario usuario = requireUsuarioAutenticado();
@@ -164,7 +162,7 @@ public class PedidoService {
 
     /**
      * Historial paginado de ventas del usuario autenticado.
-     * Un pedido aparece si al menos una línea pertenece a una publicación del vendedor.
+     * Un pedido aparece si al menos una linea pertenece a una publicacion del vendedor.
      */
     public Page<PedidoSummaryResponseDTO> listarMisVentas(Pageable pageable) {
         Usuario usuario = requireUsuarioAutenticado();
@@ -174,15 +172,11 @@ public class PedidoService {
         return pedidoMapper.toSummaryPage(pedidos);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // CAMBIO DE ESTADO
-    // ──────────────────────────────────────────────────────────────────────────
-
     /**
-     * Cambia el estado de un pedido, respetando transiciones válidas y los permisos por rol.
+     * Cambia el estado de un pedido, respetando transiciones validas y los permisos por rol.
      *
-     * Si la transición no es válida → BusinessRuleException → 400.
-     * Si el actor no tiene permiso  → AccessDeniedException → 403.
+     * Si la transicion no es valida -> BusinessRuleException -> 400.
+     * Si el actor no tiene permiso -> AccessDeniedException -> 403.
      */
     public PedidoResponseDTO cambiarEstado(Long pedidoId, CambioEstadoRequestDTO request) {
         Usuario actor = requireUsuarioAutenticado();
@@ -192,27 +186,21 @@ public class PedidoService {
         EstadoPedido nuevoEstado = request.getNuevoEstado();
 
         if (esAdmin(actor)) {
-            // El admin puede aplicar cualquier transición válida.
             pedido.transicionarA(nuevoEstado);
-
         } else if (pedido.getComprador().getId().equals(actor.getId())) {
-            // El comprador solo puede cancelar su propio pedido.
             if (nuevoEstado != EstadoPedido.CANCELADO) {
                 throw new AccessDeniedException(
-                        "El comprador solo puede cancelar su pedido. Para otros cambios de estado contactá al vendedor.");
+                        "El comprador solo puede cancelar su pedido. Para otros cambios de estado contacta al vendedor.");
             }
             pedido.transicionarA(nuevoEstado);
-
         } else {
-            throw new AccessDeniedException("No tenés permiso para cambiar el estado de este pedido.");
+            throw new AccessDeniedException("No tenes permiso para cambiar el estado de este pedido.");
         }
 
         pedidoRepository.save(pedido);
         return pedidoMapper.toDTO(pedido);
     }
 
-    
-    // El usuario siempre sale del JWT, no del body.
     private Usuario requireUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null
@@ -238,8 +226,6 @@ public class PedidoService {
             return pageable;
         }
 
-        // Si el cliente no manda sort, aplicamos fecha desc para que el historial
-        // salga de más reciente a más antiguo.
         return PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
