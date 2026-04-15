@@ -69,7 +69,7 @@ El usuario arma la compra antes de pagar, sin comprometer stock definitivo hasta
 
 ---
 
-### 3. Checkout / pedido(JULI)
+### 3. Checkout / pedido(DONE JULI)
 
 **Objetivo**  
 Convertir el carrito en un compromiso de compra con **snapshot de precios** (el precio del producto puede cambiar después).
@@ -101,7 +101,7 @@ Convertir el carrito en un compromiso de compra con **snapshot de precios** (el 
 
 ---
 
-### 4. Estados de pedido (flujo simple)(JULI)
+### 4. Estados de pedido (flujo simple)( DONE JULI)
 
 **Objetivo**  
 Todos entienden en qué etapa está la compra (como en ML: pagaste, enviaron, llegó).
