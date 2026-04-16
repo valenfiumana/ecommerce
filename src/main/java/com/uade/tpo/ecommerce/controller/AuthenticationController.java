@@ -6,12 +6,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-
 import com.uade.tpo.ecommerce.dto.LoginRequestDTO;
 import com.uade.tpo.ecommerce.dto.RegisterRequestDTO;
 import com.uade.tpo.ecommerce.service.AuthenticationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
  * ({@link com.uade.tpo.ecommerce.exception.ConflictException}); credenciales incorrectas en login → 401
  * ({@link org.springframework.security.authentication.BadCredentialsException}).</p>
  */
+@Tag(name = "Autenticación", description = "Registro y login (JWT)")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class AuthenticationController {
      * Registro: persiste usuario con contraseña hasheada (BCrypt) y rol por defecto.
      * {@code @Valid} dispara las anotaciones de Bean Validation del {@link RegisterRequestDTO}.
      */
+    @Operation(summary = "Registro de usuario", description = "Crea cuenta con BCrypt y rol por defecto. Público. Errores: 400 validación, 409 email duplicado.")
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequestDTO request) {
         return ResponseEntity.ok(authenticationService.register(request));
@@ -45,6 +48,7 @@ public class AuthenticationController {
      * Login: valida credenciales vía {@code AuthenticationManager}; si OK, devuelve JWT firmado.
      * {@code @Valid} asegura email/contraseña no vacíos y formato de email antes de llamar a Spring Security.
      */
+    @Operation(summary = "Login", description = "Devuelve JWT en el cuerpo (texto). Usar en header Authorization: Bearer … para el resto de la API. 401 si credenciales inválidas.")
     @PostMapping("/login")
     public ResponseEntity<String> login(@Valid @RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authenticationService.authenticate(request));

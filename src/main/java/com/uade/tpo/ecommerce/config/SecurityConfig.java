@@ -37,7 +37,8 @@ import lombok.RequiredArgsConstructor;
  * se aplica en {@link com.uade.tpo.ecommerce.service.ProductoService} (no se confía en un {@code vendedorId} del body).</p>
  * <p>El carrito ({@code /api/cart}) pide JWT en todos los métodos.</p>
  * <p>{@code /api/direcciones} y {@code /api/pagos} quedan cubiertos por {@code anyRequest().authenticated()}.</p>
- * <p>Perfil: {@code GET/PATCH /api/usuarios/me} con JWT; listado global de usuarios sigue sin implementar.</p>
+ * <p>Perfil: {@code GET/PATCH /api/usuarios/me} con JWT; {@code GET /api/usuarios} solo {@code ROLE_ADMIN}.</p>
+ * <p>Swagger UI y OpenAPI JSON son públicos: {@code /swagger-ui/**}, {@code /v3/api-docs/**}.</p>
  */
 // Indica que esta clase contiene configuraciones de Spring
 @Configuration
@@ -158,6 +159,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint(restSecurityErrorHandler)
                         .accessDeniedHandler(restSecurityErrorHandler))
                 .authorizeHttpRequests(auth -> auth
+                        // OpenAPI + Swagger UI (sin token)
+                        .requestMatchers(
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
+                                .permitAll()
                         // Rutas públicas que no requieren autenticación
                         //el controller /api/auth puede ser solicitado por cualquier usuario
                         .requestMatchers("/api/auth/**").permitAll()
@@ -177,6 +185,7 @@ public class SecurityConfig {
 
                         // Perfil propio
                         .requestMatchers("/api/usuarios/me", "/api/usuarios/me/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios").hasRole(Role.ADMIN.name())
 
                         // Rutas exclusivas para administradores
                         //verifica que el usuario esté autenticado y tenga el rol ADMIN

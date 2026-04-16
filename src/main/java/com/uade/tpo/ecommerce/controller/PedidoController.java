@@ -23,8 +23,12 @@ import com.uade.tpo.ecommerce.dto.pedido.PedidoResponseDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoSummaryResponseDTO;
 import com.uade.tpo.ecommerce.service.PedidoService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+@Tag(name = "Pedidos", description = "Checkout, historial, detalle y cambio de estado")
 @RestController
 @RequestMapping("/api/pedidos")
 public class PedidoController {
@@ -38,6 +42,7 @@ public class PedidoController {
      * no se guarda dirección ni notas).
      * Devuelve 201 Created con el pedido generado.
      */
+    @Operation(summary = "Checkout desde carrito", description = "Crea pedido con snapshot de precios, descuenta stock, vacía carrito. Body opcional (direccionId, direccionEnvio, notas). 201.")
     @PostMapping("/checkout")
     public ResponseEntity<PedidoResponseDTO> checkout(
             @RequestBody(required = false) CheckoutRequestDTO request) {
@@ -49,6 +54,7 @@ public class PedidoController {
      * Historial de pedidos del usuario autenticado.
      * Ruta fija — debe declararse antes de /{id}.
      */
+    @Operation(summary = "Mis pedidos (lista completa)", description = "Todos los pedidos del comprador autenticado, detalle completo, más reciente primero. Sin paginación.")
     @GetMapping("/mis-pedidos")
     public ResponseEntity<List<PedidoResponseDTO>> misPedidos() {
         return ResponseEntity.ok(pedidoService.misPedidos());
@@ -58,6 +64,7 @@ public class PedidoController {
      * Historial paginado de compras del usuario autenticado.
      * Devuelve 200 incluso si no hay pedidos: la página llega vacía.
      */
+    @Operation(summary = "Mis compras (paginado)", description = "Resumen de pedidos donde sos comprador. Parámetros estándar page, size, sort.")
     @GetMapping("/mis-compras")
     public ResponseEntity<Page<PedidoSummaryResponseDTO>> misCompras(
             @PageableDefault(size = 10, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -68,6 +75,7 @@ public class PedidoController {
      * Historial paginado de ventas del usuario autenticado.
      * El usuario solo ve pedidos que contienen productos de sus publicaciones.
      */
+    @Operation(summary = "Mis ventas (paginado)", description = "Pedidos que incluyen al menos una línea de tus publicaciones.")
     @GetMapping("/mis-ventas")
     public ResponseEntity<Page<PedidoSummaryResponseDTO>> misVentas(
             @PageableDefault(size = 10, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -76,22 +84,26 @@ public class PedidoController {
 
     /**
      * Detalle de un pedido específico.
-     * Solo accesible por el comprador del pedido o un admin.
+     * Comprador del pedido, vendedor con al menos una línea propia, o admin.
      */
+    @Operation(summary = "Detalle de pedido", description = "Comprador, vendedor involucrado en alguna línea, o ADMIN. 403 si no corresponde.")
     @GetMapping("/{id}")
-    public ResponseEntity<PedidoResponseDTO> obtenerPedido(@PathVariable Long id) {
+    public ResponseEntity<PedidoResponseDTO> obtenerPedido(
+            @Parameter(description = "ID del pedido") @PathVariable Long id) {
         return ResponseEntity.ok(pedidoService.obtenerPedido(id));
     }
 
     /**
      * Cambia el estado del pedido.
-     * - COMPRADOR: solo puede CANCELAR un pedido propio en PENDIENTE_PAGO.
-     * - ADMIN:     puede hacer cualquier transición válida.
+     * - ADMIN: puede cualquier transición válida.
+     * - COMPRADOR: cancelar cuando el flujo lo permite; o ENTREGADO cuando el pedido está ENVIADO.
+     * - VENDEDOR (con ítems en el pedido): ENVIADO desde PAGADO; ENTREGADO desde ENVIADO.
      * Si la transición no es válida → 400 con mensaje claro.
      */
+    @Operation(summary = "Cambiar estado del pedido", description = "Transiciones válidas según rol: admin todas; comprador cancelar o ENTREGADO si ENVIADO; vendedor PAGADO→ENVIADO o ENVIADO→ENTREGADO. 400 si transición inválida.")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<PedidoResponseDTO> cambiarEstado(
-            @PathVariable Long id,
+            @Parameter(description = "ID del pedido") @PathVariable Long id,
             @Valid @RequestBody CambioEstadoRequestDTO request) {
         return ResponseEntity.ok(pedidoService.cambiarEstado(id, request));
     }

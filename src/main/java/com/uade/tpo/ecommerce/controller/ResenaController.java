@@ -18,6 +18,9 @@ import com.uade.tpo.ecommerce.dto.Resena.ResenaResponseDTO;
 import com.uade.tpo.ecommerce.dto.Resena.VendedorResumenDTO;
 import com.uade.tpo.ecommerce.service.ResenaService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 /**
@@ -28,6 +31,7 @@ import jakarta.validation.Valid;
  * - GET /api/productos/{id}/resenas → Listar reseñas de un producto (público)
  * - GET /api/vendedores/{id}/resumen → Resumen de vendedor (público)
  */
+@Tag(name = "Reseñas", description = "Alta de reseña, listado por producto y resumen de vendedor")
 @RestController
 @RequestMapping("/api/resenas")
 public class ResenaController {
@@ -59,9 +63,10 @@ public class ResenaController {
      * @throws BusinessRuleException si no cumple con las reglas de negocio
      * @throws ConflictException si ya existe una reseña para este item
      */
+    @Operation(summary = "Crear reseña", description = "Solo comprador del pedido; pedido ENTREGADO; una reseña por pedido_item. 201.")
     @PostMapping
     public ResponseEntity<ResenaResponseDTO> crearResena(
-            @RequestParam Long pedidoItemId,
+            @Parameter(description = "ID de la línea de pedido (PedidoItem) a reseñar", required = true) @RequestParam Long pedidoItemId,
             @Valid @RequestBody ResenaRequestDTO requestDTO) {
         ResenaResponseDTO resena = resenaService.crearResena(pedidoItemId, requestDTO);
         return new ResponseEntity<>(resena, HttpStatus.CREATED);
@@ -90,9 +95,10 @@ public class ResenaController {
      * @param productoId ID del producto
      * @return ResponseEntity con lista de reseñas
      */
+    @Operation(summary = "Reseñas por producto", description = "Público. Rutas bajo /api/resenas/productos/{productoId}.")
     @GetMapping("/productos/{productoId}")
     public ResponseEntity<List<ResenaResponseDTO>> obtenerReseniasProducto(
-            @PathVariable Long productoId) {
+            @Parameter(description = "ID del producto") @PathVariable Long productoId) {
         List<ResenaResponseDTO> resenas = resenaService.obtenerReseniasProducto(productoId);
         return ResponseEntity.ok(resenas);
     }
@@ -120,9 +126,10 @@ public class ResenaController {
      * @return ResponseEntity con el resumen de reputación
      * @throws ResourceNotFoundException si el vendedor no existe
      */
+    @Operation(summary = "Resumen de vendedor", description = "Público. Promedio, cantidad de reseñas y ventas. GET /api/resenas/vendedores/{vendedorId}.")
     @GetMapping("/vendedores/{vendedorId}")
     public ResponseEntity<VendedorResumenDTO> obtenerResumenVendedor(
-            @PathVariable Long vendedorId) {
+            @Parameter(description = "ID del usuario vendedor") @PathVariable Long vendedorId) {
         VendedorResumenDTO resumen = resenaService.obtenerResumenVendedor(vendedorId);
         return ResponseEntity.ok(resumen);
     }

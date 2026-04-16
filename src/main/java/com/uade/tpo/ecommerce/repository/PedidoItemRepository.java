@@ -1,7 +1,6 @@
 package com.uade.tpo.ecommerce.repository;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -60,4 +59,14 @@ public interface PedidoItemRepository extends JpaRepository<PedidoItem, Long> {
     @Query("SELECT COALESCE(SUM(pi.cantidad), 0) FROM PedidoItem pi " +
            "WHERE pi.producto.vendedor.id = :vendedorId")
     Long countByProductoVendedorId(@Param("vendedorId") Long vendedorId);
+
+    /**
+     * Líneas del pedido cuyo producto publicó el vendedor (para permisos de detalle / estado).
+     */
+    @Query("""
+            SELECT COUNT(pi) FROM PedidoItem pi
+            WHERE pi.pedido.id = :pedidoId
+            AND pi.producto.vendedor.id = :vendedorId
+            """)
+    long countByPedidoIdAndProductoVendedorId(@Param("pedidoId") Long pedidoId, @Param("vendedorId") Long vendedorId);
 }

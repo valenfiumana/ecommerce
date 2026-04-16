@@ -29,6 +29,12 @@ public class UsuarioPerfilResponseDTO {
     /** Productos donde el usuario es vendedor. */
     private List<PublicacionPerfilDTO> publicaciones;
 
-    /** Compras del usuario; vacío hasta que exista el módulo de pedidos. */
+    /** Pedidos donde el usuario es comprador (más recientes primero). */
     private List<CompraPerfilDTO> compras;
+
+    /**
+     * Pedidos donde participó como vendedor (al menos una línea de sus publicaciones).
+     * Misma forma que {@link #compras}; tope en servidor al armar el perfil.
+     */
+    private List<CompraPerfilDTO> ventas;
 }

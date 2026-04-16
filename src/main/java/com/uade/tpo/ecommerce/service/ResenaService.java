@@ -145,50 +145,13 @@ public class ResenaService {
      * @throws ResourceNotFoundException si el vendedor no existe
      */
     public VendedorResumenDTO obtenerResumenVendedor(Long vendedorId) {
-        // 1️⃣ Verificar que el vendedor existe
         usuarioRepository.findById(vendedorId)
                 .orElseThrow(() -> new ResourceNotFoundException(RECURSO_VENDEDOR, vendedorId));
 
-        // 2️⃣ Obtener todos los productos del vendedor para iterar sobre sus reseñas
-        // Esta es una aproximación más simple que evita lazy loading issues
-        List<Resena> resenasDelVendedor = new java.util.ArrayList<>();
-        
-        // Obtener los productos del vendedor y sus reseñas
-        try {
-            // Usar findByCompradorId como base y luego filtrar
-            var productosVendedor = new java.util.HashSet<Long>();
-            
-            // Get all PedidoItems for the vendor's products
-            var allResenas = resenaRepository.findAll();
-            for (Resena resena : allResenas) {
-                if (resena.getPedidoItem() != null && 
-                    resena.getPedidoItem().getProducto() != null &&
-                    resena.getPedidoItem().getProducto().getVendedor() != null &&
-                    vendedorId.equals(resena.getPedidoItem().getProducto().getVendedor().getId())) {
-                    resenasDelVendedor.add(resena);
-                }
-            }
-        } catch (Exception e) {
-            // Si hay problemas con lazy loading, retornar resumen vacío
-            resenasDelVendedor = new java.util.ArrayList<>();
-        }
-
-        // 3️⃣ Calcular promedio manualmente si hay reseñas
-        Double promedio = null;
-        if (!resenasDelVendedor.isEmpty()) {
-            double suma = resenasDelVendedor.stream()
-                    .mapToDouble(r -> r.getPuntuacion())
-                    .sum();
-            promedio = suma / resenasDelVendedor.size();
-        }
-
-        // 4️⃣ Cantidad de reseñas es el tamaño de la lista
-        Long cantidadResenas = (long) resenasDelVendedor.size();
-
-        // 5️⃣ Obtener la cantidad de ventas (productos vendidos)
+        Double promedio = resenaRepository.findPromedioCalificacionVendedor(vendedorId);
+        Long cantidadResenas = resenaRepository.countReseniasVendedor(vendedorId);
         Long cantidadVentas = pedidoItemRepository.countByProductoVendedorId(vendedorId);
 
-        // 6️⃣ Retornar el DTO mapeado
         return resenaMapper.toVendedorResumen(promedio, cantidadResenas, cantidadVentas);
     }
 

@@ -17,8 +17,12 @@ import com.uade.tpo.ecommerce.dto.favorito.FavoritoRequestDTO;
 import com.uade.tpo.ecommerce.dto.favorito.FavoritoResponseDTO;
 import com.uade.tpo.ecommerce.service.FavoritoService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+@Tag(name = "Favoritos", description = "Publicaciones guardadas del usuario")
 @RestController
 @RequestMapping("/api/favorites")
 public class FavoritoController {
@@ -26,32 +30,35 @@ public class FavoritoController {
     @Autowired
     private FavoritoService favoritoService;
 
-    @GetMapping // GET de favoritos del usuario
+    @Operation(summary = "Mis favoritos", description = "Listado del usuario autenticado.")
+    @GetMapping
     public ResponseEntity<List<FavoritoResponseDTO>> listarMisFavoritos() {
         return ResponseEntity.ok(favoritoService.listarMisFavoritos());
     }
 
-    // GET  del favorito por id
+    @Operation(summary = "Obtener favorito por id", description = "403 si el favorito no pertenece al usuario del token.")
     @GetMapping("/{id}")
-    public ResponseEntity<FavoritoResponseDTO> obtenerPorId(@PathVariable Long id) {
+    public ResponseEntity<FavoritoResponseDTO> obtenerPorId(
+            @Parameter(description = "ID del registro favorito") @PathVariable Long id) {
         return ResponseEntity.ok(favoritoService.obtenerPorId(id));
     }
 
-    // GET favoritos de un usuario por id
+    @Operation(summary = "Favoritos por userId", description = "Solo el mismo userId que el token o ROLE_ADMIN; 403 en otro caso.")
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<FavoritoResponseDTO>> listarPorUsuario(@PathVariable Long userId) {
+    public ResponseEntity<List<FavoritoResponseDTO>> listarPorUsuario(
+            @Parameter(description = "ID del usuario") @PathVariable Long userId) {
         return ResponseEntity.ok(favoritoService.listarPorUsuario(userId));
     }
 
-    // POST agregar producto a favoritos
+    @Operation(summary = "Agregar favorito", description = "201. Idempotente según reglas de negocio (duplicado puede dar 409).")
     @PostMapping
     public ResponseEntity<FavoritoResponseDTO> agregar(@Valid @RequestBody FavoritoRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(favoritoService.agregar(request));
     }
 
-    // DELETE quitar de favoritos
+    @Operation(summary = "Quitar favorito", description = "204. Solo si el favorito es del usuario autenticado.")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminar(@Parameter(description = "ID del registro favorito") @PathVariable Long id) {
         favoritoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }

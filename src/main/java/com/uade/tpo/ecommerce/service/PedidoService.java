@@ -31,6 +31,7 @@ import com.uade.tpo.ecommerce.model.Role;
 import com.uade.tpo.ecommerce.model.Usuario;
 import com.uade.tpo.ecommerce.repository.CarritoItemRepository;
 import com.uade.tpo.ecommerce.repository.DireccionRepository;
+import com.uade.tpo.ecommerce.repository.PedidoItemRepository;
 import com.uade.tpo.ecommerce.repository.PedidoRepository;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
 
@@ -42,6 +43,9 @@ public class PedidoService {
 
     @Autowired
     private PedidoRepository pedidoRepository;
+
+    @Autowired
+    private PedidoItemRepository pedidoItemRepository;
 
     @Autowired
     private CarritoItemRepository carritoItemRepository;
@@ -150,18 +154,21 @@ public class PedidoService {
 
     /**
      * Detalle de un pedido por id.
-     * Solo el comprador del pedido o un ADMIN pueden verlo.
+     * Comprador del pedido, un vendedor con al menos una línea de sus publicaciones, o ADMIN.
      */
     public PedidoResponseDTO obtenerPedido(Long pedidoId) {
         Usuario usuario = requireUsuarioAutenticado();
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido", pedidoId));
 
-        if (!pedido.getComprador().getId().equals(usuario.getId()) && !esAdmin(usuario)) {
-            throw new AccessDeniedException("No tenes permiso para ver este pedido.");
+        if (pedido.getComprador().getId().equals(usuario.getId()) || esAdmin(usuario)) {
+            return pedidoMapper.toDTO(pedido);
+        }
+        if (esVendedorInvolucradoEnPedido(pedidoId, usuario.getId())) {
+            return pedidoMapper.toDTO(pedido);
         }
 
-        return pedidoMapper.toDTO(pedido);
+        throw new AccessDeniedException("No tenes permiso para ver este pedido.");
     }
 
     /**
@@ -201,6 +208,12 @@ public class PedidoService {
     /**
      * Cambia el estado de un pedido, respetando transiciones validas y los permisos por rol.
      *
+     * <ul>
+     *   <li>ADMIN: cualquier transición válida según {@link EstadoPedido}.</li>
+     *   <li>Comprador: cancelar cuando la máquina de estados lo permite; o marcar ENTREGADO cuando el pedido está ENVIADO (confirmación de recepción).</li>
+     *   <li>Vendedor con líneas en el pedido: PAGADO → ENVIADO; ENVIADO → ENTREGADO.</li>
+     * </ul>
+     *
      * Si la transicion no es valida -> BusinessRuleException -> 400.
      * Si el actor no tiene permiso -> AccessDeniedException -> 403.
      */
@@ -210,13 +223,21 @@ public class PedidoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido", pedidoId));
 
         EstadoPedido nuevoEstado = request.getNuevoEstado();
+        EstadoPedido actual = pedido.getEstado();
 
         if (esAdmin(actor)) {
             pedido.transicionarA(nuevoEstado);
         } else if (pedido.getComprador().getId().equals(actor.getId())) {
-            if (nuevoEstado != EstadoPedido.CANCELADO) {
+            if (!compradorPuedePedirTransicion(actual, nuevoEstado)) {
                 throw new AccessDeniedException(
-                        "El comprador solo puede cancelar su pedido. Para otros cambios de estado contacta al vendedor.");
+                        "Como comprador solo podés cancelar el pedido (cuando corresponde) "
+                                + "o marcarlo como entregado cuando ya figura como enviado.");
+            }
+            pedido.transicionarA(nuevoEstado);
+        } else if (esVendedorInvolucradoEnPedido(pedidoId, actor.getId())) {
+            if (!vendedorPuedePedirTransicion(actual, nuevoEstado)) {
+                throw new AccessDeniedException(
+                        "Como vendedor solo podés marcar enviado (desde pagado) o entregado (desde enviado).");
             }
             pedido.transicionarA(nuevoEstado);
         } else {
@@ -241,6 +262,28 @@ public class PedidoService {
 
     private boolean esAdmin(Usuario usuario) {
         return Role.ADMIN.equals(usuario.getRole());
+    }
+
+    private boolean esVendedorInvolucradoEnPedido(Long pedidoId, Long vendedorUsuarioId) {
+        return pedidoItemRepository.countByPedidoIdAndProductoVendedorId(pedidoId, vendedorUsuarioId) > 0;
+    }
+
+    /**
+     * Comprador: cancelación según reglas del enum; o confirma recepción (ENVIADO → ENTREGADO).
+     */
+    private boolean compradorPuedePedirTransicion(EstadoPedido actual, EstadoPedido nuevo) {
+        if (nuevo == EstadoPedido.CANCELADO) {
+            return actual.puedeTransicionarA(EstadoPedido.CANCELADO);
+        }
+        return nuevo == EstadoPedido.ENTREGADO && actual == EstadoPedido.ENVIADO;
+    }
+
+    /**
+     * Vendedor de al menos un ítem: despacha (PAGADO → ENVIADO) o cierra envío (ENVIADO → ENTREGADO).
+     */
+    private boolean vendedorPuedePedirTransicion(EstadoPedido actual, EstadoPedido nuevo) {
+        return (nuevo == EstadoPedido.ENVIADO && actual == EstadoPedido.PAGADO)
+                || (nuevo == EstadoPedido.ENTREGADO && actual == EstadoPedido.ENVIADO);
     }
 
     private Pageable normalizarPageable(Pageable pageable) {
