@@ -9,7 +9,6 @@ INSERT INTO usuarios (nombre, apellido, email, password, fecha_nacimiento, sexo,
 SELECT 'Seed', 'Vendedor', 'seed-demo@local.dev',
        '$2a$10$9fnM3/55XDOnL.wcVV4V0eFkCoA//wFrI6W91LgVulnr4SVFsWGN6',
        '1990-01-15', 'NO_INDICA', 'USER'
-FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.email = 'seed-demo@local.dev');
 
 -- Usuario admin opcional (mismas credenciales de demo)
@@ -17,7 +16,6 @@ INSERT INTO usuarios (nombre, apellido, email, password, fecha_nacimiento, sexo,
 SELECT 'Seed', 'Admin', 'seed-admin@local.dev',
        '$2a$10$9fnM3/55XDOnL.wcVV4V0eFkCoA//wFrI6W91LgVulnr4SVFsWGN6',
        '1990-01-15', 'NO_INDICA', 'ADMIN'
-FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.email = 'seed-admin@local.dev');
 
 -- Productos asignados al vendedor seed (solo si no existe ya un producto con ese nombre)
