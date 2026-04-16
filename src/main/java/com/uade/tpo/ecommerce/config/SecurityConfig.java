@@ -185,6 +185,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/pedidos/**").authenticated()
 
                         .requestMatchers("/api/favorites/**").authenticated()
+                        // Reseñas: crear requiere autenticación, leer es público
+                        // POST /api/resenas → solo usuarios logueados pueden crear reseñas
+                        .requestMatchers(HttpMethod.POST, "/api/resenas").authenticated()
+                        // GET /api/resenas/** → cualquiera puede ver reseñas y resumen de vendedor
+                        .requestMatchers(HttpMethod.GET, "/api/resenas/**").permitAll()
+
+                        // Vendedores: resumen es público (cualquiera puede ver reputación)
+                        .requestMatchers(HttpMethod.GET, "/api/vendedores/**").permitAll()
 
                         // Cualquier otra ruta requiere autenticación
                         // con esta linea abarca requiere que todos los endpoints esten autenticados
