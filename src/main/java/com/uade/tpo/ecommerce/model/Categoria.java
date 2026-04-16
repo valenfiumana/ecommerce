@@ -9,15 +9,14 @@ import java.util.ArrayList;
 @Entity
 @Table(name = "categorias")
 public class Categoria {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @Column(nullable = false)    
+
+    @Column(nullable = false)
     private String nombre;
 
-    
     @ManyToMany(mappedBy = "categorias")
     private List<Producto> productos = new ArrayList<>();
 }

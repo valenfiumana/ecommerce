@@ -1,4 +1,7 @@
 HELP.md
+.env
+# Config local (secretos / credenciales); la plantilla es application.properties.test
+src/main/resources/application.properties
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
