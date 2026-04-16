@@ -30,18 +30,18 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "productos")
 public class Producto {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false)
     private String nombre;
-    
+
     private String descripcion;
-    
+
     @Column(nullable = false)
-    private Double precio;    
+    private Double precio;
     @Column(nullable = false)
     private Integer stock;
 
@@ -56,19 +56,13 @@ public class Producto {
     private Usuario vendedor;
 
     // private String imagenUrl;
-    
+
     // @Builder.Default: al usar Producto.builder()...build(), si no se asigna categorías, se usa lista vacía en lugar de null
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "productos_categorias",
-        joinColumns = @JoinColumn(name = "producto_id"),
-        inverseJoinColumns = @JoinColumn(name = "categoria_id")
-    )
+            name = "productos_categorias",
+            joinColumns = @JoinColumn(name = "producto_id"),
+            inverseJoinColumns = @JoinColumn(name = "categoria_id"))
     @Builder.Default
     private List<Categoria> categorias = new ArrayList<>();
-    //producto.getCategorias(); // trae las categorias del producto
- 
-    
-
-
 }
