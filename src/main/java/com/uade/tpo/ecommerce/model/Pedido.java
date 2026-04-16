@@ -8,6 +8,7 @@ import com.uade.tpo.ecommerce.exception.BusinessRuleException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -60,8 +61,12 @@ public class Pedido {
     @Column(nullable = false, length = 30)
     private EstadoPedido estado;
 
-    // Dirección de envío como texto libre (puede ser null si no se indicó).
+    // Dirección de envío como texto libre o resumen generado desde snapshot (puede ser null).
     private String direccionEnvio;
+
+    /** Copia estructurada al confirmar el pedido (p. ej. desde {@code direccionId} en checkout). */
+    @Embedded
+    private DireccionSnapshot direccionSnapshot;
 
     // Notas opcionales del comprador al hacer el checkout.
     private String notas;

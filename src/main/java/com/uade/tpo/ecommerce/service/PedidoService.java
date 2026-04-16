@@ -22,12 +22,15 @@ import com.uade.tpo.ecommerce.dto.pedido.PedidoSummaryResponseDTO;
 import com.uade.tpo.ecommerce.exception.BusinessRuleException;
 import com.uade.tpo.ecommerce.exception.ResourceNotFoundException;
 import com.uade.tpo.ecommerce.model.CarritoItem;
+import com.uade.tpo.ecommerce.model.Direccion;
+import com.uade.tpo.ecommerce.model.DireccionSnapshot;
 import com.uade.tpo.ecommerce.model.EstadoPedido;
 import com.uade.tpo.ecommerce.model.Pedido;
 import com.uade.tpo.ecommerce.model.PedidoItem;
 import com.uade.tpo.ecommerce.model.Role;
 import com.uade.tpo.ecommerce.model.Usuario;
 import com.uade.tpo.ecommerce.repository.CarritoItemRepository;
+import com.uade.tpo.ecommerce.repository.DireccionRepository;
 import com.uade.tpo.ecommerce.repository.PedidoRepository;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
 
@@ -52,8 +55,30 @@ public class PedidoService {
     @Autowired
     private StockService stockService;
 
+    @Autowired
+    private DireccionRepository direccionRepository;
+
+    @Autowired
+    private DireccionMapper direccionMapper;
+
     public PedidoResponseDTO confirmarDesdeCarrito(CheckoutRequestDTO request) {
         Usuario comprador = requireUsuarioAutenticado();
+
+        String lineaEnvio = null;
+        DireccionSnapshot snap = null;
+        if (request != null && request.getDireccionId() != null) {
+            Direccion dir = direccionRepository.findById(request.getDireccionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Direccion", request.getDireccionId()));
+            if (!dir.getUsuario().getId().equals(comprador.getId())) {
+                throw new AccessDeniedException("No podés usar una dirección de otro usuario.");
+            }
+            snap = direccionMapper.toSnapshot(dir);
+            lineaEnvio = DireccionSnapshot.formatearUnaLinea(snap);
+        } else if (request != null
+                && request.getDireccionEnvio() != null
+                && !request.getDireccionEnvio().isBlank()) {
+            lineaEnvio = request.getDireccionEnvio().trim();
+        }
 
         List<CarritoItem> carritoItems =
                 carritoItemRepository.findByUsuarioIdOrderByIdAscWithProducto(comprador.getId());
@@ -106,7 +131,8 @@ public class PedidoService {
                 .fecha(LocalDateTime.now())
                 .total(total)
                 .estado(EstadoPedido.PENDIENTE_PAGO)
-                .direccionEnvio(request != null ? request.getDireccionEnvio() : null)
+                .direccionEnvio(lineaEnvio)
+                .direccionSnapshot(snap)
                 .notas(request != null ? request.getNotas() : null)
                 .items(new ArrayList<>())
                 .build();

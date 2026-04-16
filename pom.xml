@@ -94,6 +94,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<!-- NOTE: H2 agregado también para runtime para poder levantar la app local sin MySQL -->
+			<scope>runtime</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

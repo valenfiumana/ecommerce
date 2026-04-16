@@ -11,6 +11,9 @@ import lombok.NoArgsConstructor;
  * Todos los campos son opcionales: el checkout funciona aunque se mande
  * el body vacío o directamente sin body.
  * El comprador SIEMPRE sale del JWT — nunca se acepta un compradorId del cliente.
+ *
+ * Si {@code direccionId} está presente, se copia un snapshot de esa dirección al pedido
+ * (tiene prioridad sobre {@code direccionEnvio} en texto libre).
  */
 @Data
 @Builder
@@ -18,7 +21,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CheckoutRequestDTO {
 
-    // Dirección de envío en texto libre (puede evolucionar a un ID de dirección en el futuro).
+    /** Dirección guardada del usuario autenticado; debe ser propia. */
+    private Long direccionId;
+
+    // Dirección de envío en texto libre (si no se usa direccionId).
     private String direccionEnvio;
 
     // Notas opcionales del comprador (ej: "dejar en portería", "llamar antes").

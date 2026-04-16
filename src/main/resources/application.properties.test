@@ -28,6 +28,11 @@ jwt.expiration=86400000
 # --- CORS  ---
 app.cors.allowed-origins=http://localhost:5173,http://localhost:3000
 
+# --- Pagos mock (solo desarrollo; en producción usar false) ---
+app.payments.mock-enabled=true
+app.payments.mock-random-outcome=false
+app.payments.mock-rechazo-cancela-pedido=false
+
 # --- Opcional: H2 en memoria ---
 # spring.datasource.url=jdbc:h2:mem:testdb
 # spring.datasource.driverClassName=org.h2.Driver
