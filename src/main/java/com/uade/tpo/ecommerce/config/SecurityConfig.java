@@ -184,6 +184,7 @@ public class SecurityConfig {
                         // Rutas de pedidos solo para usuarios autenticados
                         .requestMatchers("/api/pedidos/**").authenticated()
 
+                        .requestMatchers("/api/favorites/**").authenticated()
                         // Reseñas: crear requiere autenticación, leer es público
                         // POST /api/resenas → solo usuarios logueados pueden crear reseñas
                         .requestMatchers(HttpMethod.POST, "/api/resenas").authenticated()
