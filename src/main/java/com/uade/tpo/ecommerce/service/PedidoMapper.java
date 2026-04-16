@@ -6,9 +6,11 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import com.uade.tpo.ecommerce.dto.pedido.DireccionSnapshotResponseDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoItemResponseDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoResponseDTO;
 import com.uade.tpo.ecommerce.dto.pedido.PedidoSummaryResponseDTO;
+import com.uade.tpo.ecommerce.model.DireccionSnapshot;
 import com.uade.tpo.ecommerce.model.Pedido;
 import com.uade.tpo.ecommerce.model.PedidoItem;
 
@@ -28,6 +30,7 @@ public class PedidoMapper {
                 .total(pedido.getTotal())
                 .estado(pedido.getEstado())
                 .direccionEnvio(pedido.getDireccionEnvio())
+                .direccionSnapshot(toSnapshotDTO(pedido.getDireccionSnapshot()))
                 .notas(pedido.getNotas())
                 .items(pedido.getItems().stream()
                         .map(this::toItemDTO)
@@ -57,6 +60,21 @@ public class PedidoMapper {
 
     public Page<PedidoSummaryResponseDTO> toSummaryPage(Page<Pedido> pedidos) {
         return pedidos.map(this::toSummaryDTO);
+    }
+
+    private DireccionSnapshotResponseDTO toSnapshotDTO(DireccionSnapshot snap) {
+        if (snap == null) {
+            return null;
+        }
+        return DireccionSnapshotResponseDTO.builder()
+                .calle(snap.getCalle())
+                .numero(snap.getNumero())
+                .codigoPostal(snap.getCodigoPostal())
+                .ciudad(snap.getCiudad())
+                .provincia(snap.getProvincia())
+                .pais(snap.getPais())
+                .referencia(snap.getReferencia())
+                .build();
     }
 
     private PedidoItemResponseDTO toItemDTO(PedidoItem item) {

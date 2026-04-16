@@ -25,6 +25,8 @@ public class PedidoResponseDTO {
     private Double total;
     private EstadoPedido estado;
     private String direccionEnvio;
+    /** Datos estructurados guardados al comprar (si se eligió {@code direccionId} en checkout). */
+    private DireccionSnapshotResponseDTO direccionSnapshot;
     private String notas;
     private List<PedidoItemResponseDTO> items;
 }

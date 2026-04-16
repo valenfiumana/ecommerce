@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
  * <p>GET {@code /api/productos} es público; POST/PUT/DELETE requieren JWT. La autorización “dueño o admin”
  * se aplica en {@link com.uade.tpo.ecommerce.service.ProductoService} (no se confía en un {@code vendedorId} del body).</p>
  * <p>El carrito ({@code /api/cart}) pide JWT en todos los métodos.</p>
+ * <p>{@code /api/direcciones} y {@code /api/pagos} quedan cubiertos por {@code anyRequest().authenticated()}.</p>
  * <p>Perfil: {@code GET/PATCH /api/usuarios/me} con JWT; listado global de usuarios sigue sin implementar.</p>
  */
 // Indica que esta clase contiene configuraciones de Spring
