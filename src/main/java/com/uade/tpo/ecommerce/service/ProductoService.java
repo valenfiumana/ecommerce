@@ -1,5 +1,8 @@
 package com.uade.tpo.ecommerce.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.uade.tpo.ecommerce.dto.categoria.CategoriaResponseDTO;
 import com.uade.tpo.ecommerce.dto.producto.BusquedaProductoCriteria;
 import com.uade.tpo.ecommerce.dto.producto.ProductoOrden;
 import com.uade.tpo.ecommerce.dto.producto.ProductoCreateRequestDTO;
@@ -21,8 +25,11 @@ import com.uade.tpo.ecommerce.dto.producto.ProductoResponseDTO;
 import com.uade.tpo.ecommerce.dto.producto.ProductoUpdateRequestDTO;
 import com.uade.tpo.ecommerce.exception.ArgumentInvalidException;
 import com.uade.tpo.ecommerce.exception.ResourceNotFoundException;
+import com.uade.tpo.ecommerce.model.Categoria;
 import com.uade.tpo.ecommerce.model.Producto;
+import com.uade.tpo.ecommerce.model.ProductoImagen;
 import com.uade.tpo.ecommerce.model.Usuario;
+import com.uade.tpo.ecommerce.repository.CategoriaRepository;
 import com.uade.tpo.ecommerce.repository.ProductoRepository;
 import com.uade.tpo.ecommerce.repository.ProductoSpecifications;
 import com.uade.tpo.ecommerce.repository.UsuarioRepository;
@@ -46,6 +53,9 @@ public class ProductoService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private CategoriaRepository categoriaRepository;
 
     public List<ProductoResponseDTO> getAllProductos() {
         // Catálogo público: igualmente traemos vendedor en una sola ida por el @EntityGraph del repositorio
@@ -93,6 +103,8 @@ public class ProductoService {
 
     public ProductoResponseDTO saveProducto(ProductoCreateRequestDTO request) {
         validarPrecioYStock(request.getPrecio(), request.getStock());
+        List<Categoria> categorias = resolverCategorias(request.getCategoriaIds());
+        List<String> imagenes = normalizarImagenes(request.getImagenes());
         // Nunca tomar vendedorId del JSON: el cliente podría falsificarlo; el dueño es quien trae el Bearer válido
         Usuario vendedor = requireUsuarioAutenticado();
 
@@ -103,7 +115,9 @@ public class ProductoService {
                 .precio(request.getPrecio())
                 .stock(request.getStock())
                 .vendedor(vendedor)
+                .categorias(new ArrayList<>(categorias))
                 .build();
+        actualizarImagenes(producto, imagenes);
 
         Producto guardado = productoRepository.save(producto);
         return toResponse(guardado);
@@ -111,6 +125,8 @@ public class ProductoService {
 
     public ProductoResponseDTO updateProducto(Long id, ProductoUpdateRequestDTO request) {
         validarPrecioYStock(request.getPrecio(), request.getStock());
+        List<Categoria> categorias = resolverCategorias(request.getCategoriaIds());
+        List<String> imagenes = normalizarImagenes(request.getImagenes());
 
         Producto existente = productoRepository.findDetailById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(RECURSO_PRODUCTO, id));
@@ -122,6 +138,8 @@ public class ProductoService {
         existente.setDescripcion(request.getDescripcion());
         existente.setPrecio(request.getPrecio());
         existente.setStock(request.getStock());
+        existente.setCategorias(new ArrayList<>(categorias));
+        actualizarImagenes(existente, imagenes);
 
         return toResponse(productoRepository.save(existente));
     }
@@ -157,6 +175,47 @@ public class ProductoService {
     private void validarMayorQueCero(int value, String message) {
         if (value <= 0) {
             throw new ArgumentInvalidException(message);
+        }
+    }
+
+    private List<Categoria> resolverCategorias(List<Long> categoriaIds) {
+        LinkedHashSet<Long> idsUnicos = new LinkedHashSet<>(categoriaIds);
+        List<Categoria> categorias = categoriaRepository.findAllById(idsUnicos);
+
+        if (categorias.size() != idsUnicos.size()) {
+            LinkedHashSet<Long> encontrados = categorias.stream()
+                    .map(Categoria::getId)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            Long faltante = idsUnicos.stream()
+                    .filter(id -> !encontrados.contains(id))
+                    .findFirst()
+                    .orElse(null);
+            throw new ResourceNotFoundException("Categoria", faltante);
+        }
+
+        return categorias;
+    }
+
+    private List<String> normalizarImagenes(List<String> imagenes) {
+        List<String> normalizadas = imagenes.stream()
+                .map(String::trim)
+                .filter(url -> !url.isBlank())
+                .toList();
+        if (normalizadas.isEmpty()) {
+            throw new ArgumentInvalidException("Debes enviar al menos una imagen válida");
+        }
+        return normalizadas;
+    }
+
+    private void actualizarImagenes(Producto producto, List<String> urls) {
+        producto.getImagenes().clear();
+        int orden = 0;
+        for (String url : urls) {
+            producto.getImagenes().add(ProductoImagen.builder()
+                    .producto(producto)
+                    .url(url)
+                    .orden(orden++)
+                    .build());
         }
     }
 
@@ -215,6 +274,17 @@ public class ProductoService {
                 .descripcion(producto.getDescripcion())
                 .precio(producto.getPrecio())
                 .stock(producto.getStock())
+                .categorias(producto.getCategorias().stream()
+                        .map(c -> CategoriaResponseDTO.builder()
+                                .id(c.getId())
+                                .nombre(c.getNombre())
+                                .build())
+                        .sorted(Comparator.comparing(CategoriaResponseDTO::getNombre, String.CASE_INSENSITIVE_ORDER))
+                        .toList())
+                .imagenes(producto.getImagenes().stream()
+                        .sorted(Comparator.comparing(ProductoImagen::getOrden))
+                        .map(ProductoImagen::getUrl)
+                        .toList())
                 .vendedorId(v != null ? v.getId() : null)
                 .vendedorNombre(v != null ? nombreVisibleVendedor(v) : null)
                 .build();

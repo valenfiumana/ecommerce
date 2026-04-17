@@ -96,10 +96,10 @@
   "item": [
     {
       "name": "Demo · flujo completo (seed)",
-      "description": "Orden sugerido de arriba abajo: login comprador → búsqueda → … → mis pedidos (rellena pedidoId/pedidoItemId) → pago mock → login vendedor → estado ENVIADO → login comprador → ENTREGADO → reseña. Requiere data.sql + mock pagos. Checkout al final pisa `pedidoId`.",
+      "description": "Flujo lógico de arriba hacia abajo para un pedido nuevo: login comprador → producto/dirección → carrito → checkout → pago mock → login vendedor → ENVIADO → login comprador → ENTREGADO → capturar `pedidoItemId` → crear reseña. Luego consultas de validación.",
       "item": [
         {
-          "name": "Login comprador",
+          "name": "01 · Login comprador",
           "request": {
             "method": "POST",
             "header": [
@@ -118,7 +118,7 @@
           "response": []
         },
         {
-          "name": "Búsqueda · guarda productId y vendedorId",
+          "name": "02 · Búsqueda (guarda productId y vendedorId)",
           "event": [
             {
               "listen": "test",
@@ -139,38 +139,7 @@
           "response": []
         },
         {
-          "name": "Búsqueda por categoría",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/productos/search?categoriaId={{categoriaId}}&page=0&size=10",
-            "description": "Ajustá `categoriaId` (p. ej. 1) según tu BD tras el seed."
-          },
-          "response": [],
-          "description": "Ajustá `categoriaId` según tu BD."
-        },
-        {
-          "name": "Mi perfil",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/usuarios/me",
-            "description": "Perfil con compras/ventas resumidas."
-          },
-          "response": []
-        },
-        {
-          "name": "Direcciones · listar (guarda direccionId)",
+          "name": "03 · Direcciones listar (guarda direccionId)",
           "event": [
             {
               "listen": "test",
@@ -201,293 +170,7 @@
           "response": []
         },
         {
-          "name": "Direcciones · crear",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"calle\": \"Rivadavia\",\n  \"numero\": \"5000\",\n  \"codigoPostal\": \"C1424\",\n  \"ciudad\": \"CABA\",\n  \"provincia\": \"CABA\",\n  \"pais\": \"AR\",\n  \"referencia\": \"Demo Postman\",\n  \"principal\": false\n}"
-            },
-            "url": "{{baseUrl}}/api/direcciones",
-            "description": "201 nueva dirección."
-          },
-          "response": []
-        },
-        {
-          "name": "Reseñas del producto",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/resenas/productos/{{productId}}",
-            "description": "Público."
-          },
-          "response": []
-        },
-        {
-          "name": "Resumen del vendedor",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/resenas/vendedores/{{vendedorId}}",
-            "description": "Público. Necesita `vendedorId` (request 02)."
-          },
-          "response": []
-        },
-        {
-          "name": "Mis pedidos · lista (guarda variables)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (!Array.isArray(arr)) return; var pend = arr.find(function (p) { return p.estado === 'PENDIENTE_PAGO'; }); if (pend && pend.id) pm.collectionVariables.set('pedidoId', String(pend.id)); var ent = arr.find(function (p) { return p.estado === 'ENTREGADO' && p.notas === 'SEED_ENTREGADO_MARK'; }) || arr.find(function (p) { return p.estado === 'ENTREGADO'; }); var it = ent && ent.items && ent.items[0]; if (it && it.id) pm.collectionVariables.set('pedidoItemId', String(it.id)); } catch (e) {} }"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/pedidos/mis-pedidos",
-            "description": "Rellena `pedidoId` (pendiente de pago) y `pedidoItemId` (primera línea del ENTREGADO seed)."
-          },
-          "response": []
-        },
-        {
-          "name": "Mis compras · paginado",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/pedidos/mis-compras?page=0&size=5",
-            "description": "Paginado Spring (`content`, `totalElements`, …)."
-          },
-          "response": []
-        },
-        {
-          "name": "Pago mock · aprobado",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"resultado\": \"APROBADO\"\n}"
-            },
-            "url": "{{baseUrl}}/api/pagos/mock",
-            "description": "Ejecutá **08** antes. Requiere mock de pagos habilitado en el servidor."
-          },
-          "response": []
-        },
-        {
-          "name": "Login vendedor catálogo",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"seed-demo@local.dev\",\n  \"password\": \"Secret1234\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/login",
-            "description": "Dueño de las publicaciones seed."
-          },
-          "response": []
-        },
-        {
-          "name": "Pedido · marcar ENVIADO (vendedor)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{tokenVendedor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nuevoEstado\": \"ENVIADO\"\n}"
-            },
-            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
-            "description": "Después del pago mock el pedido queda PAGADO. El vendedor pasa a ENVIADO."
-          },
-          "response": []
-        },
-        {
-          "name": "Login comprador (restaurar token)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"seed-comprador@local.dev\",\n  \"password\": \"Secret1234\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/login",
-            "description": "Restaurá `{{token}}` del comprador."
-          },
-          "response": []
-        },
-        {
-          "name": "Pedido · marcar ENTREGADO (comprador)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nuevoEstado\": \"ENTREGADO\"\n}"
-            },
-            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
-            "description": "Con pedido en ENVIADO, el comprador puede marcar entregado."
-          },
-          "response": []
-        },
-        {
-          "name": "Crear reseña",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"puntuacion\": 5,\n  \"comentario\": \"Excelente (demo Postman)\"\n}"
-            },
-            "url": "{{baseUrl}}/api/resenas?pedidoItemId={{pedidoItemId}}",
-            "description": "Usa `pedidoItemId` del pedido **ENTREGADO** (request 08). 409 si ya había reseña."
-          },
-          "response": [],
-          "description": "Usa `pedidoItemId` del pedido ENTREGADO (Mis pedidos). 409 si ya existe reseña."
-        },
-        {
-          "name": "Favoritos · listar (guarda favoritoId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (Array.isArray(arr) && arr[0] && arr[0].id) pm.collectionVariables.set('favoritoId', String(arr[0].id)); } catch (e) {} }"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/favorites",
-            "description": "Favorito seed mouse + opcional DELETE /api/favorites/{{favoritoId}}."
-          },
-          "response": []
-        },
-        {
-          "name": "Agregar al carrito",
+          "name": "04 · Agregar al carrito",
           "request": {
             "auth": {
               "type": "bearer",
@@ -511,12 +194,12 @@
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
             },
             "url": "{{baseUrl}}/api/cart",
-            "description": "Sumá al carrito (producto del paso 02)."
+            "description": "Sumá al carrito (producto obtenido en 02)."
           },
           "response": []
         },
         {
-          "name": "Checkout pedido",
+          "name": "05 · Checkout pedido",
           "event": [
             {
               "listen": "test",
@@ -551,12 +234,288 @@
               "raw": "{\n  \"direccionId\": {{direccionId}},\n  \"notas\": \"Checkout demo Postman\"\n}"
             },
             "url": "{{baseUrl}}/api/pedidos/checkout",
-            "description": "201 nuevo pedido PENDIENTE_PAGO; pisa `pedidoId` (útil para repetir pago mock). Requiere carrito no vacío (17) y `direccionId` (04)."
+            "description": "201 nuevo pedido PENDIENTE_PAGO; guarda `pedidoId`. Requiere carrito no vacío (04) y `direccionId` (03)."
           },
           "response": []
         },
         {
-          "name": "Detalle del pedido",
+          "name": "06 · Pago mock aprobado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"resultado\": \"APROBADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pagos/mock",
+            "description": "Ejecutá después de checkout (05). Requiere mock de pagos habilitado."
+          },
+          "response": []
+        },
+        {
+          "name": "07 · Login vendedor catálogo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-demo@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Dueño de las publicaciones seed."
+          },
+          "response": []
+        },
+        {
+          "name": "08 · Pedido marcar ENVIADO (vendedor)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoEstado\": \"ENVIADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
+            "description": "Después del pago mock el pedido queda PAGADO. El vendedor lo pasa a ENVIADO."
+          },
+          "response": []
+        },
+        {
+          "name": "09 · Login comprador (restaurar token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-comprador@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Restaurá `{{token}}` del comprador."
+          },
+          "response": []
+        },
+        {
+          "name": "10 · Pedido marcar ENTREGADO (comprador)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoEstado\": \"ENTREGADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
+            "description": "Con pedido en ENVIADO, el comprador puede marcar ENTREGADO."
+          },
+          "response": []
+        },
+        {
+          "name": "11 · Mis pedidos (guarda pedidoItemId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (!Array.isArray(arr)) return; var pid = pm.collectionVariables.get('pedidoId'); var actual = arr.find(function (p) { return pid && String(p.id) === String(pid); }) || arr.find(function (p) { return p.estado === 'ENTREGADO'; }); if (actual && actual.id) pm.collectionVariables.set('pedidoId', String(actual.id)); var it = actual && actual.items && actual.items[0]; if (it && it.id) pm.collectionVariables.set('pedidoItemId', String(it.id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-pedidos",
+            "description": "Ubica el pedido actual por `pedidoId` y guarda `pedidoItemId` para la reseña."
+          },
+          "response": []
+        },
+        {
+          "name": "12 · Crear reseña",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 5,\n  \"comentario\": \"Excelente (demo Postman)\"\n}"
+            },
+            "url": "{{baseUrl}}/api/resenas?pedidoItemId={{pedidoItemId}}",
+            "description": "Usa `pedidoItemId` capturado en 11. 409 si ya había reseña para esa línea."
+          },
+          "response": []
+        },
+        {
+          "name": "13 · Reseñas del producto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/productos/{{productId}}",
+            "description": "Público."
+          },
+          "response": []
+        },
+        {
+          "name": "14 · Resumen del vendedor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/vendedores/{{vendedorId}}",
+            "description": "Público. Necesita `vendedorId` (capturado en 02)."
+          },
+          "response": []
+        },
+        {
+          "name": "15 · Favoritos listar (guarda favoritoId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (Array.isArray(arr) && arr[0] && arr[0].id) pm.collectionVariables.set('favoritoId', String(arr[0].id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites",
+            "description": "Favoritos del usuario; opcional luego DELETE /api/favorites/{{favoritoId}}."
+          },
+          "response": []
+        },
+        {
+          "name": "16 · Mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/me",
+            "description": "Perfil con compras/ventas resumidas."
+          },
+          "response": []
+        },
+        {
+          "name": "17 · Mis compras paginado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-compras?page=0&size=5",
+            "description": "Paginado Spring (`content`, `totalElements`, …)."
+          },
+          "response": []
+        },
+        {
+          "name": "18 · Detalle del pedido",
           "request": {
             "auth": {
               "type": "bearer",
@@ -571,7 +530,46 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
-            "description": "Detalle del último `pedidoId` conocido."
+            "description": "Detalle del pedido actual (`pedidoId`)."
+          },
+          "response": []
+        },
+        {
+          "name": "19 · Búsqueda por categoría",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/productos/search?categoriaId={{categoriaId}}&page=0&size=10",
+            "description": "Público. Validación de filtro por categoría."
+          },
+          "response": []
+        },
+        {
+          "name": "20 · Direcciones crear (opcional)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"Rivadavia\",\n  \"numero\": \"5000\",\n  \"codigoPostal\": \"C1424\",\n  \"ciudad\": \"CABA\",\n  \"provincia\": \"CABA\",\n  \"pais\": \"AR\",\n  \"referencia\": \"Demo Postman\",\n  \"principal\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "201 nueva dirección para pruebas adicionales."
           },
           "response": []
         }
@@ -864,6 +862,16 @@
               "response": []
             },
             {
+              "name": "Listar categorías",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/categorias",
+                "description": "Público. Devuelve categorías ordenadas por nombre (id + nombre)."
+              },
+              "response": []
+            },
+            {
               "name": "Búsqueda con texto",
               "request": {
                 "method": "GET",
@@ -922,10 +930,10 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Alta individual\",\n  \"precio\": 49.99,\n  \"stock\": 5\n}"
+                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Alta individual\",\n  \"precio\": 49.99,\n  \"stock\": 5,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/producto-prueba-1/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos",
-                "description": "201: el `id` del body se guarda en `{{productId}}` (Tests). PUT/DELETE usan ese id."
+                "description": "201: el `id` del body se guarda en `{{productId}}` (Tests). Requiere `categoriaIds` e `imagenes`."
               },
               "response": []
             },
@@ -951,7 +959,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Actualizado\",\n  \"precio\": 44.99,\n  \"stock\": 4\n}"
+                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Actualizado\",\n  \"precio\": 44.99,\n  \"stock\": 4,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/producto-prueba-2/800/600\",\n    \"https://picsum.photos/seed/producto-prueba-3/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos/{{productId}}",
                 "description": "403 si el token no es del vendedor ni admin."
@@ -996,7 +1004,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/sin-login/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos",
                 "description": "Sin Authorization. Esperado: 401."
@@ -1118,7 +1126,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Prueba vendedor\",\n  \"precio\": 15000,\n  \"stock\": 3\n}"
+                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Prueba vendedor\",\n  \"precio\": 15000,\n  \"stock\": 3,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/teclado-a-1/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos",
                 "description": "201: `id` → `{{productId}}` automático. vendedorId en el JSON debe coincidir con el usuario A."
@@ -1157,7 +1165,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Teclado robado\",\n  \"descripcion\": \"No deberia poder\",\n  \"precio\": 1,\n  \"stock\": 0\n}"
+                  "raw": "{\n  \"nombre\": \"Teclado robado\",\n  \"descripcion\": \"No deberia poder\",\n  \"precio\": 1,\n  \"stock\": 0,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/teclado-b-1/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos/{{productId}}",
                 "description": "No es el dueño. Esperado: 403 + JSON."
@@ -1186,7 +1194,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Actualizado por el vendedor\",\n  \"precio\": 14500,\n  \"stock\": 2\n}"
+                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Actualizado por el vendedor\",\n  \"precio\": 14500,\n  \"stock\": 2,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/teclado-a-2/800/600\",\n    \"https://picsum.photos/seed/teclado-a-3/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos/{{productId}}",
                 "description": "Dueño. Esperado: 200."
@@ -1245,7 +1253,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1,\n  \"categoriaIds\": [{{categoriaId}}],\n  \"imagenes\": [\n    \"https://picsum.photos/seed/sin-login-2/800/600\"\n  ]\n}"
                 },
                 "url": "{{baseUrl}}/api/productos",
                 "description": "Sin Bearer. Esperado: 401."
@@ -1365,7 +1373,7 @@
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 2\n}"
             },
             "url": "{{baseUrl}}/api/cart",
-            "description": "Suma unidades; merge si ya había línea. Copiá el `id` de la línea a `cartLineId` para el request 08."
+            "description": "Suma unidades; merge si ya había línea. Copiá el `id` de la línea a `cartLineId` para el request \"Quitar línea por id de fila\"."
           },
           "response": []
         },

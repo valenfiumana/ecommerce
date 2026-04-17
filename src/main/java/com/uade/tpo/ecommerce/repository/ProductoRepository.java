@@ -43,15 +43,15 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
      * al armar cada DTO y tocar {producto.getVendedor()}, Hibernate haría otro {SELECT} por cada fila.
      * Eso es el problema N+1: 1 query de lista + N queries de vendedor. Acá lo evitamos: una consulta principal con join al usuario.</p>
      */
-    @EntityGraph(attributePaths = "vendedor")
-    @Query("SELECT p FROM Producto p ORDER BY LOWER(p.nombre) ASC")
+    @EntityGraph(attributePaths = { "vendedor", "categorias", "imagenes" })
+    @Query("SELECT DISTINCT p FROM Producto p ORDER BY LOWER(p.nombre) ASC")
     List<Producto> findAllForCatalog();
 
     /**
      * Detalle por id con vendedor incluido; usado en GET público y en PUT/DELETE para evaluar dueño vs actor.
      */
-    @EntityGraph(attributePaths = "vendedor")
-    @Query("SELECT p FROM Producto p WHERE p.id = :id")
+    @EntityGraph(attributePaths = { "vendedor", "categorias", "imagenes" })
+    @Query("SELECT DISTINCT p FROM Producto p WHERE p.id = :id")
     Optional<Producto> findDetailById(@Param("id") Long id);
 
     /** Productos publicados por un usuario (perfil / mis publicaciones). */

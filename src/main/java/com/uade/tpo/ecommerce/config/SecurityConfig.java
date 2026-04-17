@@ -171,6 +171,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         //el endpoint /api/productos con metodo get es público, cualquiera puede ver los productos
                         .requestMatchers(HttpMethod.GET, "/api/productos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
 
                         // Rutas que requieren autenticación para modificar productos
                         //solo los usuarios autenticados pueden crear un producto

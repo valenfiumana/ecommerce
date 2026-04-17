@@ -1,5 +1,9 @@
 package com.uade.tpo.ecommerce.dto.producto;
 
+import java.util.List;
+
+import com.uade.tpo.ecommerce.dto.categoria.CategoriaResponseDTO;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +25,8 @@ public class ProductoResponseDTO {
     private String descripcion;
     private Double precio;
     private Integer stock;
+    private List<CategoriaResponseDTO> categorias;
+    private List<String> imagenes;
 
     /** Id del usuario que publicó; útil para enlaces o soporte, no reemplaza políticas de autorización en servidor. */
     private Long vendedorId;

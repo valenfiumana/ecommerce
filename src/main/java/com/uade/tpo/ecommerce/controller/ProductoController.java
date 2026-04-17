@@ -68,7 +68,7 @@ public class ProductoController {
         return ResponseEntity.ok(productoService.buscar(criteria, page, size));
     }
 
-    @Operation(summary = "Detalle de producto", description = "Público. Incluye vendedorId y vendedorNombre.")
+    @Operation(summary = "Detalle de producto", description = "Público. Incluye vendedor, categorías e imágenes.")
     @GetMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> getProductoById(
             @Parameter(description = "ID del producto") @PathVariable Long id) {
@@ -87,7 +87,7 @@ public class ProductoController {
 
     // POST /api/productos — vendedor = usuario del JWT (@Valid en el DTO).
     // @Valid: dispara la validación Jakarta Bean Validation definida en el DTO (anotaciones como @NotNull, @NotBlank)
-    @Operation(summary = "Crear producto", description = "Vendedor = usuario del JWT (no se acepta vendedorId en body). 201.")
+    @Operation(summary = "Crear producto", description = "Vendedor = usuario del JWT (no se acepta vendedorId en body). Requiere categoriaIds (>=1) e imagenes (>=1). 201.")
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> saveProducto(@Valid @RequestBody ProductoCreateRequestDTO request) {
         ProductoResponseDTO savedProducto = productoService.saveProducto(request);
@@ -95,7 +95,7 @@ public class ProductoController {
     }
     
     // PUT /api/productos/{id} — solo dueño o admin (lo decide el servicio).
-    @Operation(summary = "Actualizar producto", description = "Solo dueño o ADMIN. No cambia vendedor_id.")
+    @Operation(summary = "Actualizar producto", description = "Solo dueño o ADMIN. No cambia vendedor_id. Requiere categoriaIds (>=1) e imagenes (>=1).")
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> updateProducto(
             @Parameter(description = "ID del producto") @PathVariable Long id,
