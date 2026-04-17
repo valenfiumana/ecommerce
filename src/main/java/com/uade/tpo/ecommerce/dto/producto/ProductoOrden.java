@@ -13,6 +13,7 @@ import com.uade.tpo.ecommerce.exception.ArgumentInvalidException;
  */
 public enum ProductoOrden {
 
+    NOMBRE_ASC("nombre_asc", Sort.by(Sort.Direction.ASC, "nombre")),
     RECIENTES("fecha", Sort.by(Sort.Direction.DESC, "id")),
     PRECIO_ASC("precio_asc", Sort.by(Sort.Direction.ASC, "precio")),
     PRECIO_DESC("precio_desc", Sort.by(Sort.Direction.DESC, "precio"));
@@ -39,6 +40,6 @@ public enum ProductoOrden {
                 .filter(orden -> orden.value.equalsIgnoreCase(normalizedValue))
                 .findFirst()
                 .orElseThrow(() -> new ArgumentInvalidException(
-                        "El parámetro orden es inválido. Valores permitidos: fecha, precio_asc, precio_desc"));
+                        "El parámetro orden es inválido. Valores permitidos: nombre_asc, fecha, precio_asc, precio_desc"));
     }
 }

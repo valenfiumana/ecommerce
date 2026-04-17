@@ -125,6 +125,13 @@ public class CarritoService {
         return listarCarrito();
     }
 
+    // Elimina todas las líneas del carrito del usuario autenticado.
+    public List<CarritoLineResponseDTO> vaciarCarrito() {
+        Usuario usuario = requireUsuarioAutenticado();
+        carritoItemRepository.deleteByUsuarioId(usuario.getId());
+        return listarCarrito();
+    }
+
     // No dejamos pedir más unidades de las que hay en stock (el stock no se baja acá, solo al pagar/comprar).
     private static void validarStockDisponible(Producto producto, int cantidadPedida) {
         // Datos raros en BD: tratamos como sin stock vendible.

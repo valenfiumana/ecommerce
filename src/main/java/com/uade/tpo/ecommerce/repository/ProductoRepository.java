@@ -44,7 +44,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
      * Eso es el problema N+1: 1 query de lista + N queries de vendedor. Acá lo evitamos: una consulta principal con join al usuario.</p>
      */
     @EntityGraph(attributePaths = "vendedor")
-    @Query("SELECT p FROM Producto p")
+    @Query("SELECT p FROM Producto p ORDER BY LOWER(p.nombre) ASC")
     List<Producto> findAllForCatalog();
 
     /**

@@ -23,4 +23,6 @@ public interface CarritoItemRepository extends JpaRepository<CarritoItem, Long> 
 
     // Para DELETE seguro: la línea tiene que ser de ese usuario.
     Optional<CarritoItem> findByIdAndUsuarioId(Long id, Long usuarioId);
+
+    long deleteByUsuarioId(Long usuarioId);
 }

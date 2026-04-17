@@ -36,6 +36,8 @@ public class Usuario implements UserDetails {
 
     private String nombre;
     private String apellido;
+    @Column(name = "nombre_usuario", unique = true)
+    private String nombreUsuario;
     @Column(unique = true)
     private String email;
     private String password;

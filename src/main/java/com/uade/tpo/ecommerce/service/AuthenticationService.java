@@ -56,6 +56,10 @@ public class AuthenticationService {
      * @throws ConflictException si el email ya existe en el sistema (409)
      */
     public String register(RegisterRequestDTO request) {
+        String nombreUsuario = request.getNombreUsuario().trim();
+        if (usuarioRepository.existsByNombreUsuarioIgnoreCase(nombreUsuario)) {
+            throw new ConflictException("El nombre de usuario ya está en uso");
+        }
 
         // ==================== PASO 1: VALIDACIÓN DE EMAIL ÚNICO ====================
         // Verifica que el email proporcionado no esté ya registrado en la base de datos.
@@ -89,6 +93,7 @@ public class AuthenticationService {
                 .nombre(request.getNombre())
                 // 2.2) Asigna el apellido del usuario desde el request
                 .apellido(request.getApellido())
+                .nombreUsuario(nombreUsuario)
                 // 2.2b) Fecha de nacimiento y sexo del perfil (validados con @Valid en el controlador)
                 .fechaNacimiento(request.getFechaNacimiento())
                 .sexo(request.getSexo())

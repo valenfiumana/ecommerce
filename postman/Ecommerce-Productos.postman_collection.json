@@ -593,10 +593,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Postman\",\n  \"apellido\": \"Test\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"MASCULINO\"\n}"
+              "raw": "{\n  \"nombreUsuario\": \"postman-test\",\n  \"nombre\": \"Postman\",\n  \"apellido\": \"Test\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"MASCULINO\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/register",
-            "description": "Esperado: 200. Cambiá el email si ya existe (409)."
+            "description": "Esperado: 200. `nombreUsuario` es obligatorio. Cambiá email/username si ya existen (409)."
           },
           "response": []
         },
@@ -612,7 +612,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Otro\",\n  \"apellido\": \"Usuario\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"OtraClave1\",\n  \"fechaNacimiento\": \"1990-01-01\",\n  \"sexo\": \"FEMENINO\"\n}"
+              "raw": "{\n  \"nombreUsuario\": \"postman-test-dup-mail\",\n  \"nombre\": \"Otro\",\n  \"apellido\": \"Usuario\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"OtraClave1\",\n  \"fechaNacimiento\": \"1990-01-01\",\n  \"sexo\": \"FEMENINO\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/register",
             "description": "Mismo email que 02. Esperado: 409 Conflict + JSON."
@@ -868,8 +868,8 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": "{{baseUrl}}/api/productos/search?q=mouse&page=0&size=10",
-                "description": "Parámetros opcionales: q, categoriaId, precioMin, precioMax, orden, page, size."
+                "url": "{{baseUrl}}/api/productos/search?q=mouse&orden=nombre_asc&page=0&size=10",
+                "description": "Parámetros opcionales: q, categoriaId, precioMin, precioMax, orden (nombre_asc, fecha, precio_asc, precio_desc), page, size."
               },
               "response": []
             },
@@ -1021,7 +1021,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Garcia\",\n  \"email\": \"vendedor-a@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"FEMENINO\"\n}"
+                  "raw": "{\n  \"nombreUsuario\": \"vendedor-a\",\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Garcia\",\n  \"email\": \"vendedor-a@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"FEMENINO\"\n}"
                 },
                 "url": "{{baseUrl}}/api/auth/register",
                 "description": "409 si el email ya existe: cambiá el email en body y en los logins siguientes."
@@ -1040,7 +1040,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Luis\",\n  \"apellido\": \"Perez\",\n  \"email\": \"vendedor-b@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1992-03-10\",\n  \"sexo\": \"MASCULINO\"\n}"
+                  "raw": "{\n  \"nombreUsuario\": \"vendedor-b\",\n  \"nombre\": \"Luis\",\n  \"apellido\": \"Perez\",\n  \"email\": \"vendedor-b@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1992-03-10\",\n  \"sexo\": \"MASCULINO\"\n}"
                 },
                 "url": "{{baseUrl}}/api/auth/register",
                 "description": "Segundo usuario para probar 403 en PUT/DELETE."
@@ -1258,7 +1258,7 @@
     },
     {
       "name": "Carrito",
-      "description": "JWT. Tras **Ver carrito**, si hay líneas, Tests guardan `{{cartLineId}}` (primera fila) para **Quitar línea**.",
+      "description": "JWT. Tras **Ver carrito**, si hay líneas, Tests guardan `{{cartLineId}}` (primera fila) para **Quitar línea**. También disponible **Vaciar carrito completo** con DELETE /api/cart.",
       "item": [
         {
           "name": "Login comprador (seed)",
@@ -1317,6 +1317,26 @@
             "header": [],
             "url": "{{baseUrl}}/api/cart",
             "description": "200. Si hay líneas, Tests guardan `cartLineId` de la primera (para Quitar línea)."
+          },
+          "response": []
+        },
+        {
+          "name": "Vaciar carrito completo",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Elimina todas las líneas del carrito del usuario autenticado."
           },
           "response": []
         },

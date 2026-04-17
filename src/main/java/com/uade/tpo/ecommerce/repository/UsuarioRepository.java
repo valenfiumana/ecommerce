@@ -23,4 +23,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // lo utiliza Spring Security para verificar si el email ya existe antes de registrar un nuevo usuario
     //automaticamente crea la consulta sql: SELECT * FROM usuario WHERE email = ? -> true o false   
     Boolean existsByEmail(String email);
+
+    Boolean existsByNombreUsuarioIgnoreCase(String nombreUsuario);
 }

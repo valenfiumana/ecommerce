@@ -56,4 +56,10 @@ public class CarritoController {
             @Parameter(description = "ID de la fila carrito_items") @PathVariable Long id) {
         return ResponseEntity.ok(carritoService.eliminarLinea(id));
     }
+
+    @Operation(summary = "Vaciar carrito", description = "Elimina todas las líneas del carrito del usuario autenticado.")
+    @DeleteMapping
+    public ResponseEntity<List<CarritoLineResponseDTO>> vaciar() {
+        return ResponseEntity.ok(carritoService.vaciarCarrito());
+    }
 }

@@ -143,6 +143,7 @@ public class UsuarioService {
                 .toList();
         return UsuarioPerfilResponseDTO.builder()
                 .id(u.getId())
+                .nombreUsuario(u.getNombreUsuario())
                 .nombre(u.getNombre())
                 .apellido(u.getApellido())
                 .email(u.getEmail())

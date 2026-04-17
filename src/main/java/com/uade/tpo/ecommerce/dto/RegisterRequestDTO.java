@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +21,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 //TODO: ssanchez - se podría cambiar el nombre a UsuarioRegisterDTO
 public class RegisterRequestDTO {
+    @NotBlank(message = "El nombre de usuario es obligatorio")
+    @Size(min = 3, max = 30, message = "El nombre de usuario debe tener entre 3 y 30 caracteres")
+    @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = "El nombre de usuario solo puede contener letras, números, punto, guión y guión bajo")
+    private String nombreUsuario;
+
     @NotBlank(message = "El nombre es obligatorio")
     private String nombre;
     @NotBlank(message = "El apellido es obligatorio")

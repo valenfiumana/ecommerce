@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 public class UsuarioPerfilResponseDTO {
 
     private Long id;
+    private String nombreUsuario;
     private String nombre;
     private String apellido;
     private String email;
