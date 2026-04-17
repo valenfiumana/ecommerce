@@ -246,7 +246,7 @@ WHERE uc.email = 'seed-comprador@local.dev'
 
 -- Pedido ENTREGADO (historial + posible POST /api/resenas sin reseña previa en BD)
 INSERT INTO pedidos (comprador_id, fecha, total, estado, direccion_envio, notas,
-                     env_snap_calle, env_snap_numero, env_snap_codigo_postal, env_snap_ciudad, env_snap_provincia, env_snap_pais, env_snap_referencia)
+                     shipping_calle, shipping_numero, shipping_codigo_postal, shipping_ciudad, shipping_provincia, shipping_pais, shipping_referencia)
 SELECT u.id, '2026-01-05 14:00:00', 45.99, 'ENTREGADO', 'Av. Corrientes 1234, CABA', 'SEED_ENTREGADO_MARK',
        'Av. Corrientes', '1234', 'C1043', 'CABA', 'CABA', 'AR', 'Seed SQL'
 FROM usuarios u
@@ -263,7 +263,7 @@ WHERE pe.notas = 'SEED_ENTREGADO_MARK'
 
 -- Pedido PENDIENTE_PAGO (POST /api/pagos/mock con pedidoId)
 INSERT INTO pedidos (comprador_id, fecha, total, estado, direccion_envio, notas,
-                     env_snap_calle, env_snap_numero, env_snap_codigo_postal, env_snap_ciudad, env_snap_provincia, env_snap_pais, env_snap_referencia)
+                     shipping_calle, shipping_numero, shipping_codigo_postal, shipping_ciudad, shipping_provincia, shipping_pais, shipping_referencia)
 SELECT u.id, '2026-01-06 11:00:00', 89.00, 'PENDIENTE_PAGO', 'Av. Corrientes 1234, CABA', 'SEED_PENDIENTE_MARK',
        'Av. Corrientes', '1234', 'C1043', 'CABA', 'CABA', 'AR', 'Seed SQL'
 FROM usuarios u
@@ -280,7 +280,7 @@ WHERE pe.notas = 'SEED_PENDIENTE_MARK'
 
 -- Pedido adicional ya reseñado (para poblar listados de reseñas sin bloquear el flujo demo principal)
 INSERT INTO pedidos (comprador_id, fecha, total, estado, direccion_envio, notas,
-                     env_snap_calle, env_snap_numero, env_snap_codigo_postal, env_snap_ciudad, env_snap_provincia, env_snap_pais, env_snap_referencia)
+                     shipping_calle, shipping_numero, shipping_codigo_postal, shipping_ciudad, shipping_provincia, shipping_pais, shipping_referencia)
 SELECT u.id, '2026-01-04 10:30:00', 120.00, 'ENTREGADO', 'Av. Corrientes 1234, CABA', 'SEED_ENTREGADO_RESENADO_MARK',
        'Av. Corrientes', '1234', 'C1043', 'CABA', 'CABA', 'AR', 'Seed SQL'
 FROM usuarios u

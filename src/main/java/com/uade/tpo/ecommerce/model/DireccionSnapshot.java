@@ -18,25 +18,25 @@ import lombok.NoArgsConstructor;
 @Embeddable
 public class DireccionSnapshot {
 
-    @Column(name = "env_snap_calle")
+    @Column(name = "shipping_calle")
     private String calle;
 
-    @Column(name = "env_snap_numero")
+    @Column(name = "shipping_numero")
     private String numero;
 
-    @Column(name = "env_snap_codigo_postal")
+    @Column(name = "shipping_codigo_postal")
     private String codigoPostal;
 
-    @Column(name = "env_snap_ciudad")
+    @Column(name = "shipping_ciudad")
     private String ciudad;
 
-    @Column(name = "env_snap_provincia")
+    @Column(name = "shipping_provincia")
     private String provincia;
 
-    @Column(name = "env_snap_pais")
+    @Column(name = "shipping_pais")
     private String pais;
 
-    @Column(name = "env_snap_referencia")
+    @Column(name = "shipping_referencia")
     private String referencia;
 
     public static String formatearUnaLinea(DireccionSnapshot s) {
