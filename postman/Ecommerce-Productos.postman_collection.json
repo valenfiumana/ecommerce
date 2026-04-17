@@ -1,37 +1,596 @@
 {
   "info": {
     "name": "Ecommerce API",
-    "description": "Colección alineada al código actual (Spring Boot + JWT).\n\n**Variables:** `baseUrl`, `jwt`, `jwtUsuarioA`, `jwtUsuarioB`, `productId`, `cartLineId`.\n\n**TXT:** `postman/curls-perfil-y-auth.txt`, `postman/curls-carrito.txt`.\n\n**Notas:** `GET /api/usuarios` stub (501). `GET/PATCH /api/usuarios/me` incluye `publicaciones` y `compras` (compras vacías hasta pedidos). No hay bulk de productos ni pedidos en este repo.",
+    "description": "API e-commerce + JWT. **Login 200:** el script de colección (Tests) guarda el JWT según el email del body: `vendedor-a@` → `tokenA`, `vendedor-b@` → `tokenB`, `seed-admin@` → `tokenAdmin`, `seed-demo@` → `tokenVendedor`, resto → `token`.\n\n**Variables:** `baseUrl`, `token`, `tokenVendedor`, `tokenAdmin`, `tokenA`, `tokenB`, `productId`, `cartLineId`, `pedidoId`, `direccionId`, `pedidoItemId`, `favoritoId`, `vendedorId`, `categoriaId`, `usuarioConsultaId`.\n\n**Seed `data.sql`:** `seed-comprador@`, `seed-demo@`, `seed-admin@`, `vendedor-a@`, `vendedor-b@` — contraseña **Secret1234**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "jwt", "value": "" },
-    { "key": "jwtUsuarioA", "value": "" },
-    { "key": "jwtUsuarioB", "value": "" },
-    { "key": "productId", "value": "1" },
-    { "key": "cartLineId", "value": "1", "description": "Id de la fila en carrito_items (respuesta GET /api/cart), para DELETE /api/cart/{id}" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenVendedor",
+      "value": "",
+      "description": "JWT de seed-demo@ (vendedor catálogo seed)"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
+      "key": "tokenA",
+      "value": ""
+    },
+    {
+      "key": "tokenB",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": "1"
+    },
+    {
+      "key": "cartLineId",
+      "value": "1",
+      "description": "Id fila carrito_items (GET /api/cart)"
+    },
+    {
+      "key": "pedidoId",
+      "value": ""
+    },
+    {
+      "key": "direccionId",
+      "value": ""
+    },
+    {
+      "key": "pedidoItemId",
+      "value": ""
+    },
+    {
+      "key": "favoritoId",
+      "value": ""
+    },
+    {
+      "key": "categoriaId",
+      "value": "1",
+      "description": "Ajustar tras listar categorías en BD o usar búsqueda sin filtro"
+    },
+    {
+      "key": "vendedorId",
+      "value": ""
+    },
+    {
+      "key": "usuarioConsultaId",
+      "value": "2",
+      "description": "Para GET /api/usuarios/{id} y /api/favorites/user/{id}; ajustar a un id real"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code !== 200) { return; }",
+          "const url = pm.request.url ? pm.request.url.toString() : '';",
+          "if (!url.includes('/api/auth/login')) { return; }",
+          "const raw = (pm.request.body && pm.request.body.raw) ? pm.request.body.raw : '';",
+          "let email = '';",
+          "try { const j = JSON.parse(raw); email = (j.email || '').toLowerCase(); } catch (e) { }",
+          "const t = pm.response.text().trim();",
+          "if (!t) { return; }",
+          "if (email.includes('vendedor-a@')) { pm.collectionVariables.set('tokenA', t); }",
+          "else if (email.includes('vendedor-b@')) { pm.collectionVariables.set('tokenB', t); }",
+          "else if (email.includes('seed-admin@')) { pm.collectionVariables.set('tokenAdmin', t); }",
+          "else if (email.includes('seed-demo@')) { pm.collectionVariables.set('tokenVendedor', t); }",
+          "else { pm.collectionVariables.set('token', t); }"
+        ]
+      }
+    }
   ],
   "item": [
     {
-      "name": "Auth — curls-auth-y-seguridad",
-      "description": "Flujo documentado en `postman/curls-auth-y-seguridad.txt`. Tras **Login OK**, copiá el body (el JWT) en la variable `jwt` de la colección para las requests que usan Bearer.",
+      "name": "Demo · flujo completo (seed)",
+      "description": "Orden sugerido de arriba abajo: login comprador → búsqueda → … → mis pedidos (rellena pedidoId/pedidoItemId) → pago mock → login vendedor → estado ENVIADO → login comprador → ENTREGADO → reseña. Requiere data.sql + mock pagos. Checkout al final pisa `pedidoId`.",
       "item": [
         {
-          "name": "01 Catálogo público GET productos",
+          "name": "Login comprador",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/productos",
-            "description": "Sin token. Esperado: 200. Mismo caso que el curl 1 del txt."
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-comprador@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "JWT en `{{token}}`."
           },
           "response": []
         },
         {
-          "name": "02 Register OK",
+          "name": "Búsqueda · guarda productId y vendedorId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var j = pm.response.json(); var row = j.content && j.content[0]; if (row && row.id) pm.collectionVariables.set('productId', String(row.id)); if (row && row.vendedorId) pm.collectionVariables.set('vendedorId', String(row.vendedorId)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/productos/search?q=Logitech&page=0&size=5",
+            "description": "Público. Guarda primer resultado en `productId` y `vendedorId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Búsqueda por categoría",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/productos/search?categoriaId={{categoriaId}}&page=0&size=10",
+            "description": "Ajustá `categoriaId` (p. ej. 1) según tu BD tras el seed."
+          },
+          "response": [],
+          "description": "Ajustá `categoriaId` según tu BD."
+        },
+        {
+          "name": "Mi perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/me",
+            "description": "Perfil con compras/ventas resumidas."
+          },
+          "response": []
+        },
+        {
+          "name": "Direcciones · listar (guarda direccionId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (Array.isArray(arr) && arr[0] && arr[0].id) pm.collectionVariables.set('direccionId', String(arr[0].id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "Lista direcciones seed del comprador."
+          },
+          "response": []
+        },
+        {
+          "name": "Direcciones · crear",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"Rivadavia\",\n  \"numero\": \"5000\",\n  \"codigoPostal\": \"C1424\",\n  \"ciudad\": \"CABA\",\n  \"provincia\": \"CABA\",\n  \"pais\": \"AR\",\n  \"referencia\": \"Demo Postman\",\n  \"principal\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "201 nueva dirección."
+          },
+          "response": []
+        },
+        {
+          "name": "Reseñas del producto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/productos/{{productId}}",
+            "description": "Público."
+          },
+          "response": []
+        },
+        {
+          "name": "Resumen del vendedor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/vendedores/{{vendedorId}}",
+            "description": "Público. Necesita `vendedorId` (request 02)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mis pedidos · lista (guarda variables)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (!Array.isArray(arr)) return; var pend = arr.find(function (p) { return p.estado === 'PENDIENTE_PAGO'; }); if (pend && pend.id) pm.collectionVariables.set('pedidoId', String(pend.id)); var ent = arr.find(function (p) { return p.estado === 'ENTREGADO' && p.notas === 'SEED_ENTREGADO_MARK'; }) || arr.find(function (p) { return p.estado === 'ENTREGADO'; }); var it = ent && ent.items && ent.items[0]; if (it && it.id) pm.collectionVariables.set('pedidoItemId', String(it.id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-pedidos",
+            "description": "Rellena `pedidoId` (pendiente de pago) y `pedidoItemId` (primera línea del ENTREGADO seed)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mis compras · paginado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-compras?page=0&size=5",
+            "description": "Paginado Spring (`content`, `totalElements`, …)."
+          },
+          "response": []
+        },
+        {
+          "name": "Pago mock · aprobado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"resultado\": \"APROBADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pagos/mock",
+            "description": "Ejecutá **08** antes. Requiere mock de pagos habilitado en el servidor."
+          },
+          "response": []
+        },
+        {
+          "name": "Login vendedor catálogo",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-demo@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Dueño de las publicaciones seed."
+          },
+          "response": []
+        },
+        {
+          "name": "Pedido · marcar ENVIADO (vendedor)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoEstado\": \"ENVIADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
+            "description": "Después del pago mock el pedido queda PAGADO. El vendedor pasa a ENVIADO."
+          },
+          "response": []
+        },
+        {
+          "name": "Login comprador (restaurar token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed-comprador@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Restaurá `{{token}}` del comprador."
+          },
+          "response": []
+        },
+        {
+          "name": "Pedido · marcar ENTREGADO (comprador)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoEstado\": \"ENTREGADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
+            "description": "Con pedido en ENVIADO, el comprador puede marcar entregado."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear reseña",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 5,\n  \"comentario\": \"Excelente (demo Postman)\"\n}"
+            },
+            "url": "{{baseUrl}}/api/resenas?pedidoItemId={{pedidoItemId}}",
+            "description": "Usa `pedidoItemId` del pedido **ENTREGADO** (request 08). 409 si ya había reseña."
+          },
+          "response": [],
+          "description": "Usa `pedidoItemId` del pedido ENTREGADO (Mis pedidos). 409 si ya existe reseña."
+        },
+        {
+          "name": "Favoritos · listar (guarda favoritoId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (Array.isArray(arr) && arr[0] && arr[0].id) pm.collectionVariables.set('favoritoId', String(arr[0].id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites",
+            "description": "Favorito seed mouse + opcional DELETE /api/favorites/{{favoritoId}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Agregar al carrito",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/cart",
+            "description": "Sumá al carrito (producto del paso 02)."
+          },
+          "response": []
+        },
+        {
+          "name": "Checkout pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) { try { var j = pm.response.json(); if (j && j.id) pm.collectionVariables.set('pedidoId', String(j.id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"direccionId\": {{direccionId}},\n  \"notas\": \"Checkout demo Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pedidos/checkout",
+            "description": "201 nuevo pedido PENDIENTE_PAGO; pisa `pedidoId` (útil para repetir pago mock). Requiere carrito no vacío (17) y `direccionId` (04)."
+          },
+          "response": []
+        },
+        {
+          "name": "Detalle del pedido",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
+            "description": "Detalle del último `pedidoId` conocido."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Autenticación",
+      "description": "Registro y login. Tras login 200, el script de colección guarda JWT según email (ver descripción de la colección).",
+      "item": [
+        {
+          "name": "Registro · éxito",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"Postman\",\n  \"apellido\": \"Test\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"MASCULINO\"\n}"
@@ -42,10 +601,15 @@
           "response": []
         },
         {
-          "name": "03 Register duplicado (409)",
+          "name": "Registro · email duplicado · 409",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nombre\": \"Otro\",\n  \"apellido\": \"Usuario\",\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"OtraClave1\",\n  \"fechaNacimiento\": \"1990-01-01\",\n  \"sexo\": \"FEMENINO\"\n}"
@@ -56,24 +620,34 @@
           "response": []
         },
         {
-          "name": "04 Login OK",
+          "name": "Login · cuenta de prueba",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"Secret1234\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Esperado: 200; el body es solo el JWT. Copiá a la variable de colección `jwt`."
+            "description": "200: body = JWT. Se guarda en `{{token}}` automáticamente."
           },
           "response": []
         },
         {
-          "name": "05 Login credenciales incorrectas (401)",
+          "name": "Login · credenciales inválidas · 401",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"test-postman@example.com\",\n  \"password\": \"MALA_CLAVE\"\n}"
@@ -84,10 +658,15 @@
           "response": []
         },
         {
-          "name": "06 Login body inválido (400)",
+          "name": "Login · validación · 400",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"\",\n  \"password\": \"x\"\n}"
@@ -98,55 +677,41 @@
           "response": []
         },
         {
-          "name": "07 GET usuarios sin token (401)",
+          "name": "Login admin seed → tokenAdmin",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/usuarios",
-            "description": "Esperado: 401 JSON (RestSecurityErrorHandler)."
-          },
-          "response": []
-        },
-        {
-          "name": "08 GET usuarios con Bearer",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
-            },
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/usuarios",
-            "description": "Requiere `jwt` relleno (login 04). Hoy el controlador responde 501 Not Implemented; sirve para probar que el JWT pasa la seguridad."
-          },
-          "response": []
-        },
-        {
-          "name": "09 POST producto con JWT (vendedor = token)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
-            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Libro de prueba\",\n  \"descripcion\": \"Desde Postman\",\n  \"precio\": 99.99,\n  \"stock\": 10\n}"
+              "raw": "{\n  \"email\": \"seed-admin@local.dev\",\n  \"password\": \"Secret1234\"\n}"
             },
-            "url": "{{baseUrl}}/api/productos",
-            "description": "ProductoCreateRequestDTO: precio y stock obligatorios. El vendedor no va en el JSON; lo asigna el backend según el token."
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "200: JWT en `{{tokenAdmin}}`. Ejecutá antes de GET /api/usuarios (admin)."
           },
           "response": []
         },
         {
-          "name": "10 CORS preflight OPTIONS login",
+          "name": "Preflight CORS (login)",
           "request": {
             "method": "OPTIONS",
             "header": [
-              { "key": "Origin", "value": "http://localhost:5173" },
-              { "key": "Access-Control-Request-Method", "value": "POST" },
-              { "key": "Access-Control-Request-Headers", "value": "content-type,authorization" }
+              {
+                "key": "Origin",
+                "value": "http://localhost:5173"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "content-type,authorization"
+              }
             ],
             "url": "{{baseUrl}}/api/auth/login",
             "description": "Opcional; el navegador lo hace solo. Ajustá Origin si tu front usa otro puerto (debe estar en app.cors.allowed-origins)."
@@ -156,115 +721,566 @@
       ]
     },
     {
-      "name": "Productos",
-      "description": "CRUD actual: GET públicos; POST/PUT/DELETE con JWT. Usá `{{productId}}` del último POST o del listado.",
+      "name": "Usuarios",
+      "description": "Perfil /me, listado admin, consulta por id. GET /api/usuarios solo ADMIN.",
       "item": [
         {
-          "name": "Get all",
+          "name": "Listar todos · sin token · 401",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/productos",
-            "description": "Catálogo público. Incluye vendedorId y vendedorNombre en cada ítem."
+            "url": "{{baseUrl}}/api/usuarios",
+            "description": "Esperado: 401 JSON (RestSecurityErrorHandler)."
           },
           "response": []
         },
         {
-          "name": "Get by id",
+          "name": "Listar todos · admin · 200",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "Detalle público. Ajustá la variable `productId`."
+            "url": "{{baseUrl}}/api/usuarios",
+            "description": "Solo **ADMIN**. Usá login `seed-admin@local.dev` (va a `{{tokenAdmin}}`) y Bearer `{{tokenAdmin}}`. 200 lista usuarios; 403 si no sos admin."
           },
           "response": []
         },
         {
-          "name": "Create (Bearer jwt)",
+          "name": "Mi perfil",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Alta individual\",\n  \"precio\": 49.99,\n  \"stock\": 5\n}"
-            },
-            "url": "{{baseUrl}}/api/productos",
-            "description": "201 Created. Guardá el `id` devuelto en `productId` para PUT/DELETE."
-          },
-          "response": []
-        },
-        {
-          "name": "Update (Bearer jwt — dueño o admin)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
-            },
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Actualizado\",\n  \"precio\": 44.99,\n  \"stock\": 4\n}"
-            },
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "403 si el token no es del vendedor ni admin."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete (Bearer jwt — dueño o admin)",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
-            },
-            "method": "DELETE",
+            "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "204 No Content si OK; 403 si no es dueño."
+            "url": "{{baseUrl}}/api/usuarios/me",
+            "description": "JWT obligatorio. Incluye publicaciones, compras y ventas resumidas."
           },
           "response": []
         },
         {
-          "name": "Create sin token (401)",
+          "name": "Actualizar mi perfil (PATCH)",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+              "raw": "{\n  \"nombre\": \"Nombre actualizado\"\n}"
             },
-            "url": "{{baseUrl}}/api/productos",
-            "description": "Sin Authorization. Esperado: 401."
+            "url": "{{baseUrl}}/api/usuarios/me",
+            "description": "PATCH parcial: solo enviás campos a cambiar."
+          },
+          "response": []
+        },
+        {
+          "name": "Por id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/{{usuarioConsultaId}}",
+            "description": "Perfil completo si sos vos o admin; si no, datos públicos mínimos. Variable `usuarioConsultaId` (ej. 1)."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar todos · rol USER · 403",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios",
+            "description": "Con JWT de usuario normal (no admin). Esperado 403."
           },
           "response": []
         }
       ]
     },
     {
-      "name": "Carrito — curls-carrito",
-      "description": "Flujo en `postman/curls-carrito.txt`. Necesitás `jwt` y `productId`. Para DELETE: `cartLineId` = campo `id` de una línea del array (no es el productId).",
+      "name": "Productos",
+      "description": "Catálogo público, búsqueda, CRUD y permisos entre vendedores.",
       "item": [
         {
-          "name": "00 Login seed (data.sql)",
+          "name": "Productos · catálogo (público)",
+          "description": "Sin Bearer.",
+          "item": [
+            {
+              "name": "Listar catálogo",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos",
+                "description": "Público. 200."
+              },
+              "response": []
+            },
+            {
+              "name": "Búsqueda con texto",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/search?q=mouse&page=0&size=10",
+                "description": "Parámetros opcionales: q, categoriaId, precioMin, precioMax, orden, page, size."
+              },
+              "response": []
+            },
+            {
+              "name": "Detalle por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "Detalle público. Ajustá la variable `productId`."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Productos · alta, edición y baja",
+          "description": "Bearer del vendedor. Tras **Alta** con 201, los Tests guardan `{{productId}}` para Actualizar y Eliminar.",
+          "item": [
+            {
+              "name": "Alta",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) { try { var j = pm.response.json(); if (j && j.id) pm.collectionVariables.set('productId', String(j.id)); } catch (e) {} }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Alta individual\",\n  \"precio\": 49.99,\n  \"stock\": 5\n}"
+                },
+                "url": "{{baseUrl}}/api/productos",
+                "description": "201: el `id` del body se guarda en `{{productId}}` (Tests). PUT/DELETE usan ese id."
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar (dueño o admin)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"descripcion\": \"Actualizado\",\n  \"precio\": 44.99,\n  \"stock\": 4\n}"
+                },
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "403 si el token no es del vendedor ni admin."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar (dueño o admin)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "204 No Content si OK; 403 si no es dueño."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Productos · errores",
+          "description": "401 sin JWT u operaciones sobre producto ajeno (403) en la carpeta Permisos.",
+          "item": [
+            {
+              "name": "Alta sin autenticación · 401",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/productos",
+                "description": "Sin Authorization. Esperado: 401."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Productos · permisos (dos vendedores)",
+          "description": "A/B o seed `vendedor-a@` / `vendedor-b@local.dev` (data.sql). Registro solo si aún no existen.",
+          "item": [
+            {
+              "name": "Registro vendedor A (omitir si existe seed)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Garcia\",\n  \"email\": \"vendedor-a@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"FEMENINO\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/register",
+                "description": "409 si el email ya existe: cambiá el email en body y en los logins siguientes."
+              },
+              "response": []
+            },
+            {
+              "name": "Registro vendedor B (omitir si existe seed)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Luis\",\n  \"apellido\": \"Perez\",\n  \"email\": \"vendedor-b@local.dev\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1992-03-10\",\n  \"sexo\": \"MASCULINO\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/register",
+                "description": "Segundo usuario para probar 403 en PUT/DELETE."
+              },
+              "response": []
+            },
+            {
+              "name": "Login vendedor A → tokenA",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"vendedor-a@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/login",
+                "description": "200: guarda JWT en `{{tokenA}}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Login vendedor B → tokenB",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"vendedor-b@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/login",
+                "description": "200: guarda JWT en `{{tokenB}}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Alta producto (cuenta A)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) { try { var j = pm.response.json(); if (j && j.id) pm.collectionVariables.set('productId', String(j.id)); } catch (e) {} }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenA}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Prueba vendedor\",\n  \"precio\": 15000,\n  \"stock\": 3\n}"
+                },
+                "url": "{{baseUrl}}/api/productos",
+                "description": "201: `id` → `{{productId}}` automático. vendedorId en el JSON debe coincidir con el usuario A."
+              },
+              "response": []
+            },
+            {
+              "name": "Detalle público",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "Sin token. Ver vendedorNombre en JSON."
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar con cuenta B · 403",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenB}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Teclado robado\",\n  \"descripcion\": \"No deberia poder\",\n  \"precio\": 1,\n  \"stock\": 0\n}"
+                },
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "No es el dueño. Esperado: 403 + JSON."
+              },
+              "response": []
+            },
+            {
+              "name": "Actualizar con cuenta A · 200",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenA}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Actualizado por el vendedor\",\n  \"precio\": 14500,\n  \"stock\": 2\n}"
+                },
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "Dueño. Esperado: 200."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar con cuenta B · 403",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenB}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "Esperado: 403."
+              },
+              "response": []
+            },
+            {
+              "name": "Eliminar con cuenta A · 204",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenA}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/productos/{{productId}}",
+                "description": "Dueño. Esperado: 204 sin cuerpo. **Ejecutá 05 de nuevo** si querés repetir el flujo."
+              },
+              "response": []
+            },
+            {
+              "name": "Alta sin autenticación · 401",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+                },
+                "url": "{{baseUrl}}/api/productos",
+                "description": "Sin Bearer. Esperado: 401."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Carrito",
+      "description": "JWT. Tras **Ver carrito**, si hay líneas, Tests guardan `{{cartLineId}}` (primera fila) para **Quitar línea**.",
+      "item": [
+        {
+          "name": "Login comprador (seed)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"seed-demo@local.dev\",\n  \"password\": \"Secret1234\"\n}"
+              "raw": "{\n  \"email\": \"seed-comprador@local.dev\",\n  \"password\": \"Secret1234\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Copiá el JWT a `jwt`. Sin seed, usá login de la carpeta Auth (mismo usuario que quieras de comprador)."
+            "description": "Comprador seed; JWT en `{{token}}`. Para vendedor catálogo: login `seed-demo@` → `{{tokenVendedor}}`."
           },
           "response": []
         },
         {
-          "name": "01 GET productos (elegir productId)",
+          "name": "Catálogo para elegir productId",
           "request": {
             "method": "GET",
             "header": [],
@@ -274,28 +1290,56 @@
           "response": []
         },
         {
-          "name": "02 GET cart",
+          "name": "Ver carrito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { try { var arr = pm.response.json(); if (Array.isArray(arr) && arr[0] && arr[0].id) pm.collectionVariables.set('cartLineId', String(arr[0].id)); } catch (e) {} }"
+                ]
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/cart",
-            "description": "Carrito del usuario del token. 200 con [] si está vacío."
+            "description": "200. Si hay líneas, Tests guardan `cartLineId` de la primera (para Quitar línea)."
           },
           "response": []
         },
         {
-          "name": "03 POST cart agregar",
+          "name": "Agregar producto al carrito",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 2\n}"
@@ -306,14 +1350,25 @@
           "response": []
         },
         {
-          "name": "04 POST cart merge (+1)",
+          "name": "Agregar otra vez (merge)",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
@@ -324,14 +1379,25 @@
           "response": []
         },
         {
-          "name": "05 PUT cart cantidad exacta",
+          "name": "Fijar cantidad",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 2\n}"
@@ -342,14 +1408,25 @@
           "response": []
         },
         {
-          "name": "06 PUT cart quantity 0 (borrar línea)",
+          "name": "Fijar cantidad cero (quita línea)",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 0\n}"
@@ -360,14 +1437,25 @@
           "response": []
         },
         {
-          "name": "07 POST cart (preparar DELETE)",
+          "name": "Agregar para probar quitar línea",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
@@ -378,11 +1466,17 @@
           "response": []
         },
         {
-          "name": "08 DELETE cart línea por id",
+          "name": "Quitar línea por id de fila",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
             "header": [],
@@ -392,7 +1486,7 @@
           "response": []
         },
         {
-          "name": "09 GET cart sin token (401)",
+          "name": "Ver carrito sin token · 401",
           "request": {
             "method": "GET",
             "header": [],
@@ -402,10 +1496,15 @@
           "response": []
         },
         {
-          "name": "10 POST cart sin token (401)",
+          "name": "Agregar sin token · 401",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": 1,\n  \"quantity\": 1\n}"
@@ -416,14 +1515,25 @@
           "response": []
         },
         {
-          "name": "11 POST cart stock insuficiente (400)",
+          "name": "Agregar cantidad > stock · 400",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 999999\n}"
@@ -436,168 +1546,541 @@
       ]
     },
     {
-      "name": "Vendedor — curls-productos-vendedor",
-      "description": "Flujo de `postman/curls-productos-vendedor.txt`: dos cuentas (A = dueño, B = otro usuario). Pegá los JWT en `jwtUsuarioA` y `jwtUsuarioB`; el `id` del producto creado con A en `productId`.",
+      "name": "Direcciones",
+      "description": "CRUD `/api/direcciones`. JWT = dueño.",
       "item": [
         {
-          "name": "01 Register vendedor A",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Garcia\",\n  \"email\": \"vendedor-a@example.com\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1995-05-20\",\n  \"sexo\": \"FEMENINO\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/register",
-            "description": "409 si el email ya existe: cambiá el email en body y en los logins siguientes."
-          },
-          "response": []
-        },
-        {
-          "name": "02 Register vendedor B",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Luis\",\n  \"apellido\": \"Perez\",\n  \"email\": \"vendedor-b@example.com\",\n  \"password\": \"Secret1234\",\n  \"fechaNacimiento\": \"1992-03-10\",\n  \"sexo\": \"MASCULINO\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/register",
-            "description": "Segundo usuario para probar 403 en PUT/DELETE."
-          },
-          "response": []
-        },
-        {
-          "name": "03 Login A → copiar JWT a jwtUsuarioA",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"vendedor-a@example.com\",\n  \"password\": \"Secret1234\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/login",
-            "description": "200: body = token. Variable de colección `jwtUsuarioA`."
-          },
-          "response": []
-        },
-        {
-          "name": "04 Login B → copiar JWT a jwtUsuarioB",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"vendedor-b@example.com\",\n  \"password\": \"Secret1234\"\n}"
-            },
-            "url": "{{baseUrl}}/api/auth/login",
-            "description": "Variable de colección `jwtUsuarioB`."
-          },
-          "response": []
-        },
-        {
-          "name": "05 POST producto como A",
+          "name": "Listar",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwtUsuarioA}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Prueba vendedor\",\n  \"precio\": 15000,\n  \"stock\": 3\n}"
-            },
-            "url": "{{baseUrl}}/api/productos",
-            "description": "201: anotá `id` → variable `productId`. vendedorId / vendedorNombre vienen del servidor."
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "Solo direcciones del usuario del token."
           },
           "response": []
         },
         {
-          "name": "06 GET detalle público por productId",
+          "name": "Obtener por id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/direcciones/{{direccionId}}",
+            "description": "403 si la dirección no es tuya."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"San Martín\",\n  \"numero\": \"100\",\n  \"codigoPostal\": \"1000\",\n  \"ciudad\": \"CABA\",\n  \"provincia\": \"CABA\",\n  \"pais\": \"AR\",\n  \"referencia\": \"Test\",\n  \"principal\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "201. Luego copiá el id a `direccionId` o ejecutá Listar."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calle\": \"San Martín\",\n  \"numero\": \"101\",\n  \"codigoPostal\": \"1000\",\n  \"ciudad\": \"CABA\",\n  \"provincia\": \"CABA\",\n  \"pais\": \"AR\",\n  \"referencia\": \"Editada\",\n  \"principal\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/direcciones/{{direccionId}}",
+            "description": "200. Requiere `direccionId` propio."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/direcciones/{{direccionId}}",
+            "description": "204. Cuidado: borra la dirección indicada."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar sin token · 401",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "Sin token. Ver vendedorNombre en JSON."
+            "url": "{{baseUrl}}/api/direcciones",
+            "description": "Sin Bearer."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "description": "Checkout, historiales y cambio de estado. **Checkout con carrito vacío** devuelve error de negocio (400): vaciá el carrito y ejecutá Checkout otra vez para probarlo.",
+      "item": [
         {
-          "name": "07 PUT como B (403)",
+          "name": "Checkout",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwtUsuarioB}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Teclado robado\",\n  \"descripcion\": \"No deberia poder\",\n  \"precio\": 1,\n  \"stock\": 0\n}"
+              "raw": "{}"
             },
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "No es el dueño. Esperado: 403 + JSON."
+            "url": "{{baseUrl}}/api/pedidos/checkout",
+            "description": "201 si el carrito tiene ítems. Body opcional: direccionId, direccionEnvio, notas."
           },
           "response": []
         },
         {
-          "name": "08 PUT como A (200)",
+          "name": "Mis pedidos · lista completa",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwtUsuarioA}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-pedidos",
+            "description": "Todos los pedidos del comprador, detalle completo."
+          },
+          "response": []
+        },
+        {
+          "name": "Mis compras · paginado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-compras?page=0&size=10",
+            "description": "Resumen paginado (page, size, sort)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mis ventas · paginado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/mis-ventas?page=0&size=10",
+            "description": "Pedidos donde aparece al menos una línea tuya. Usá login `seed-demo@` antes (tokenVendedor)."
+          },
+          "response": []
+        },
+        {
+          "name": "Detalle por id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
+            "description": "Comprador, vendedor involucrado en una línea, o admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar estado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Teclado mecanico\",\n  \"descripcion\": \"Actualizado por el vendedor\",\n  \"precio\": 14500,\n  \"stock\": 2\n}"
+              "raw": "{\n  \"nuevoEstado\": \"CANCELADO\",\n  \"motivo\": \"Prueba Postman\"\n}"
             },
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "Dueño. Esperado: 200."
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/estado",
+            "description": "400 si la transición no aplica. Ajustá estado según rol y estado actual del pedido."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pagos",
+      "description": "Mock solo con `app.payments.mock-enabled=true`.",
+      "item": [
+        {
+          "name": "Mock · aprobado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"resultado\": \"APROBADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pagos/mock",
+            "description": "Comprador del pedido. 409 si el estado no admite pago."
           },
           "response": []
         },
         {
-          "name": "09 DELETE como B (403)",
+          "name": "Mock · rechazado",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwtUsuarioB}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"resultado\": \"RECHAZADO\"\n}"
+            },
+            "url": "{{baseUrl}}/api/pagos/mock",
+            "description": "Comportamiento según `app.payments.mock-rechazo-cancela-pedido`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Favoritos",
+      "description": "`/api/favorites`. JWT.",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites",
+            "description": "Favoritos del usuario autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener por id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites/{{favoritoId}}",
+            "description": "403 si no es tuyo."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar por usuario",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites/user/{{usuarioConsultaId}}",
+            "description": "Solo el mismo userId que el token o admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Agregar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/favorites",
+            "description": "201. 409 si ya existía (según reglas de negocio)."
+          },
+          "response": []
+        },
+        {
+          "name": "Quitar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "Esperado: 403."
+            "url": "{{baseUrl}}/api/favorites/{{favoritoId}}",
+            "description": "204."
           },
           "response": []
         },
         {
-          "name": "10 DELETE como A (204)",
+          "name": "Listar sin token · 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites",
+            "description": "Sin Bearer."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reseñas",
+      "description": "`/api/resenas`. Alta autenticada; listados públicos.",
+      "item": [
+        {
+          "name": "Crear",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{jwtUsuarioA}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/productos/{{productId}}",
-            "description": "Dueño. Esperado: 204 sin cuerpo. **Ejecutá 05 de nuevo** si querés repetir el flujo."
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 4,\n  \"comentario\": \"Muy bueno\"\n}"
+            },
+            "url": "{{baseUrl}}/api/resenas?pedidoItemId={{pedidoItemId}}",
+            "description": "Query `pedidoItemId`. Pedido ENTREGADO, comprador dueño. 409 si ya reseñó."
           },
           "response": []
         },
         {
-          "name": "11 POST producto sin token (401)",
+          "name": "Por producto (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/productos/{{productId}}",
+            "description": "Sin token."
+          },
+          "response": []
+        },
+        {
+          "name": "Resumen vendedor (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/resenas/vendedores/{{vendedorId}}",
+            "description": "Sin token."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear sin token · 401",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin login\",\n  \"descripcion\": \"x\",\n  \"precio\": 10,\n  \"stock\": 1\n}"
+              "raw": "{\n  \"puntuacion\": 5,\n  \"comentario\": \"x\"\n}"
             },
-            "url": "{{baseUrl}}/api/productos",
-            "description": "Sin Bearer. Esperado: 401."
+            "url": "{{baseUrl}}/api/resenas?pedidoItemId=1",
+            "description": "Sin Bearer."
           },
           "response": []
         }
