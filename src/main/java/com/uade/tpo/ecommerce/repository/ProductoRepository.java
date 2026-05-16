@@ -42,15 +42,17 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
      * Si no estuviera (relación {LAZY}): primero iría un {SELECT} de todos los productos;
      * al armar cada DTO y tocar {producto.getVendedor()}, Hibernate haría otro {SELECT} por cada fila.
      * Eso es el problema N+1: 1 query de lista + N queries de vendedor. Acá lo evitamos: una consulta principal con join al usuario.</p>
+     * <p>No incluir {@code categorias} ni {@code imagenes} en el mismo {@code EntityGraph}: ambas son bags ({@code List})
+     * y Hibernate lanza {@code MultipleBagFetchException}. Se cargan con {@code @Fetch(SUBSELECT)} en la entidad al tocarlas en el mismo request transaccional.</p>
      */
-    @EntityGraph(attributePaths = { "vendedor", "categorias", "imagenes" })
+    @EntityGraph(attributePaths = { "vendedor" })
     @Query("SELECT DISTINCT p FROM Producto p ORDER BY LOWER(p.nombre) ASC")
     List<Producto> findAllForCatalog();
 
     /**
      * Detalle por id con vendedor incluido; usado en GET público y en PUT/DELETE para evaluar dueño vs actor.
      */
-    @EntityGraph(attributePaths = { "vendedor", "categorias", "imagenes" })
+    @EntityGraph(attributePaths = { "vendedor" })
     @Query("SELECT DISTINCT p FROM Producto p WHERE p.id = :id")
     Optional<Producto> findDetailById(@Param("id") Long id);
 

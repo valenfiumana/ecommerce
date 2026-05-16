@@ -17,6 +17,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -60,6 +63,8 @@ public class Producto {
     // private String imagenUrl;
 
     // @Builder.Default: al usar Producto.builder()...build(), si no se asigna categorías, se usa lista vacía en lugar de null
+    /** SUBSELECT evita MultipleBagFetchException si se cargan categorías + imágenes en la misma transacción (no se pueden hacer JOIN FETCH de dos bags a la vez). */
+    @Fetch(FetchMode.SUBSELECT)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "productos_categorias",
@@ -68,6 +73,7 @@ public class Producto {
     @Builder.Default
     private List<Categoria> categorias = new ArrayList<>();
 
+    @Fetch(FetchMode.SUBSELECT)
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<ProductoImagen> imagenes = new ArrayList<>();
