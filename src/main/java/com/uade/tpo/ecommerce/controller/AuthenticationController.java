@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.uade.tpo.ecommerce.dto.LoginRequestDTO;
+import com.uade.tpo.ecommerce.dto.LoginResponseDTO;
 import com.uade.tpo.ecommerce.dto.RegisterRequestDTO;
 import com.uade.tpo.ecommerce.service.AuthenticationService;
 
@@ -19,8 +20,8 @@ import lombok.RequiredArgsConstructor;
  * Endpoints de alta de usuario y obtención de JWT.
  * <p>
  * Rutas bajo {@code /api/auth} están declaradas como {@code permitAll} en {@code SecurityConfig}: el cliente puede
- * registrarse y loguearse <i>sin</i> mandar token. La respuesta del login es el string JWT que debe enviarse luego en
- * {@code Authorization: Bearer ...} para rutas protegidas.
+ * registrarse y loguearse <i>sin</i> mandar token. La respuesta del login incluye el JWT en {@code token} y debe
+ * enviarse luego en {@code Authorization: Bearer ...} para rutas protegidas.
  * </p>
  * <p>Errores típicos (vía {@code GlobalExceptionHandler}): validación {@code @Valid} → 400; email duplicado → 409
  * ({@link com.uade.tpo.ecommerce.exception.ConflictException}); credenciales incorrectas en login → 401
@@ -48,9 +49,10 @@ public class AuthenticationController {
      * Login: valida credenciales vía {@code AuthenticationManager}; si OK, devuelve JWT firmado.
      * {@code @Valid} asegura email/contraseña no vacíos y formato de email antes de llamar a Spring Security.
      */
-    @Operation(summary = "Login", description = "Devuelve JWT en el cuerpo (texto). Usar en header Authorization: Bearer … para el resto de la API. 401 si credenciales inválidas.")
+    @Operation(summary = "Login", description = "Devuelve JSON con el JWT en `token`. Usar en header Authorization: Bearer … para el resto de la API. 401 si credenciales inválidas.")
     @PostMapping("/login")
-    public ResponseEntity<String> login(@Valid @RequestBody LoginRequestDTO request) {
-        return ResponseEntity.ok(authenticationService.authenticate(request));
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
+        String token = authenticationService.authenticate(request);
+        return ResponseEntity.ok(LoginResponseDTO.builder().token(token).build());
     }
 }

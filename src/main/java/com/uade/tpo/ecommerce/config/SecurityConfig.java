@@ -166,6 +166,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")
                                 .permitAll()
+                        // Health check (Docker / monitoreo)
+                        .requestMatchers("/api/health").permitAll()
                         // Rutas públicas que no requieren autenticación
                         //el controller /api/auth puede ser solicitado por cualquier usuario
                         .requestMatchers("/api/auth/**").permitAll()
