@@ -93,8 +93,8 @@ WHERE email = 'vendedor-b@local.dev' AND (nombre_usuario IS NULL OR TRIM(nombre_
 
 -- Categorías (búsqueda por categoriaId)
 INSERT INTO categorias (nombre)
-SELECT 'Periféricos'
-WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Periféricos');
+SELECT 'Perifericos'
+WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Perifericos');
 
 INSERT INTO categorias (nombre)
 SELECT 'Monitores'
@@ -105,8 +105,8 @@ SELECT 'Almacenamiento'
 WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Almacenamiento');
 
 INSERT INTO categorias (nombre)
-SELECT 'Audio y vídeo'
-WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Audio y vídeo');
+SELECT 'Audio y video'
+WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Audio y video');
 
 INSERT INTO categorias (nombre)
 SELECT 'Notebooks'
@@ -120,7 +120,7 @@ WHERE NOT EXISTS (SELECT 1 FROM categorias c WHERE c.nombre = 'Gaming');
 INSERT INTO productos_categorias (producto_id, categoria_id)
 SELECT p.id, c.id
 FROM productos p
-JOIN categorias c ON c.nombre = 'Periféricos'
+JOIN categorias c ON c.nombre = 'Perifericos'
 WHERE p.nombre IN ('Mouse Logitech G203', 'Teclado Keychron K2', 'Webcam Logitech C920', 'Auriculares HyperX Cloud II')
   AND NOT EXISTS (
     SELECT 1 FROM productos_categorias pc
@@ -337,10 +337,10 @@ JOIN (
     UNION ALL SELECT 'SSD Kingston NV2 1TB', 'Almacenamiento'
     UNION ALL SELECT 'Disco WD Blue 2TB', 'Almacenamiento'
     UNION ALL SELECT 'Pendrive SanDisk Ultra 128GB', 'Almacenamiento'
-    UNION ALL SELECT 'Parlantes Edifier R1280T', 'Audio y vídeo'
-    UNION ALL SELECT 'Microfono Blue Yeti', 'Audio y vídeo'
-    UNION ALL SELECT 'Camara Sony ZV-1F', 'Audio y vídeo'
-    UNION ALL SELECT 'Barra de sonido JBL Bar 2.0', 'Audio y vídeo'
+    UNION ALL SELECT 'Parlantes Edifier R1280T', 'Audio y video'
+    UNION ALL SELECT 'Microfono Blue Yeti', 'Audio y video'
+    UNION ALL SELECT 'Camara Sony ZV-1F', 'Audio y video'
+    UNION ALL SELECT 'Barra de sonido JBL Bar 2.0', 'Audio y video'
     UNION ALL SELECT 'Notebook Lenovo IdeaPad 3', 'Notebooks'
     UNION ALL SELECT 'Notebook HP Pavilion 15', 'Notebooks'
     UNION ALL SELECT 'MacBook Air M1', 'Notebooks'
