@@ -25,7 +25,7 @@ jwt.secret=CAMBIA_POR_UNA_CLAVE_SECRETA_DE_AL_MENOS_32_CARACTERES
 jwt.expiration=86400000
 
 # --- CORS (SecurityConfig lee app.cors.allowed-origins) ---
-app.cors.allowed-origins=http://localhost:5173,http://localhost:3000
+app.cors.allowed-origins=http://localhost:5173,http://localhost:3000,http://localhost:4173
 
 # --- Pagos mock (PagoService; obligatorio definir para evitar ambigüedad) ---
 app.payments.mock-enabled=true

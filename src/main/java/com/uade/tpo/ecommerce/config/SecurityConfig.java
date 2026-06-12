@@ -62,7 +62,7 @@ public class SecurityConfig {
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}") String allowedOrigins) { // Especifica el origen permitido (URL de tu frontend)
+            @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,http://localhost:4173}") String allowedOrigins) { // Puertos típicos: Vite dev, CRA, Vite preview; lista separada por comas configurable (ver application.properties.test)
         CorsConfiguration configuration = new CorsConfiguration();
         // Además: separamos por coma y trim para varios frontends (Vite, CRA, etc.); con allowCredentials(true) no se puede usar "*" como origen.
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
@@ -166,6 +166,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html")
                                 .permitAll()
+                        // Health check (Docker / monitoreo)
+                        .requestMatchers("/api/health").permitAll()
                         // Rutas públicas que no requieren autenticación
                         //el controller /api/auth puede ser solicitado por cualquier usuario
                         .requestMatchers("/api/auth/**").permitAll()
