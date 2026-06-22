@@ -56,6 +56,10 @@ public class Usuario implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean activo = true;
+
     // @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     // private List<Pedido> pedidos;
 
@@ -102,6 +106,6 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return activo;
     }
 }

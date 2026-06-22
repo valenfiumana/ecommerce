@@ -189,6 +189,7 @@ public class SecurityConfig {
                         // Perfil propio
                         .requestMatchers("/api/usuarios/me", "/api/usuarios/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios").hasRole(Role.ADMIN.name())
+                        .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasRole(Role.ADMIN.name())
 
                         // Rutas exclusivas para administradores
                         //verifica que el usuario esté autenticado y tenga el rol ADMIN

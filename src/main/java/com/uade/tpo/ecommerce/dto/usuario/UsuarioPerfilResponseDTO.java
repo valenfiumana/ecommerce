@@ -26,6 +26,7 @@ public class UsuarioPerfilResponseDTO {
     private LocalDate fechaNacimiento;
     private Sexo sexo;
     private Role role;
+    private boolean activo;
 
     /** Productos donde el usuario es vendedor. */
     private List<PublicacionPerfilDTO> publicaciones;

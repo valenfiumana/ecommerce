@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,5 +60,12 @@ public class UsuarioController {
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerUsuarioPorId(@Parameter(description = "ID del usuario") @PathVariable Long id) {
         return ResponseEntity.ok(usuarioService.obtenerUsuarioPorId(id));
+    }
+
+    @Operation(summary = "Eliminar usuario (admin)", description = "Solo ROLE_ADMIN. Realiza baja logica: el usuario queda inactivo y no puede autenticarse.")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarUsuario(@Parameter(description = "ID del usuario") @PathVariable Long id) {
+        usuarioService.eliminarUsuarioComoAdmin(id);
+        return ResponseEntity.noContent().build();
     }
 }

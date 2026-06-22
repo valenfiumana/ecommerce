@@ -19,4 +19,5 @@ public class UsuarioAdminListDTO {
     private String apellido;
     private String email;
     private Role role;
+    private boolean activo;
 }
