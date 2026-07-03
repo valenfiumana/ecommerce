@@ -1,5 +1,10 @@
 package com.uade.tpo.ecommerce.controller;
 
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +40,18 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
+    @Value("${app.auth.cookie-name:access_token}")
+    private String authCookieName;
+
+    @Value("${app.auth.cookie-secure:false}")
+    private boolean authCookieSecure;
+
+    @Value("${app.auth.cookie-same-site:Lax}")
+    private String authCookieSameSite;
+
+    @Value("${jwt.expiration}")
+    private Long jwtExpirationMillis;
+
     /**
      * Registro: persiste usuario con contraseña hasheada (BCrypt) y rol por defecto.
      * {@code @Valid} dispara las anotaciones de Bean Validation del {@link RegisterRequestDTO}.
@@ -53,6 +70,28 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         String token = authenticationService.authenticate(request);
-        return ResponseEntity.ok(LoginResponseDTO.builder().token(token).build());
+        ResponseCookie cookie = buildAuthCookie(token, Duration.ofMillis(jwtExpirationMillis));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(LoginResponseDTO.builder().build());
+    }
+
+    @Operation(summary = "Logout", description = "Borra la cookie HttpOnly de autenticacion.")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        ResponseCookie cookie = buildAuthCookie("", Duration.ZERO);
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
+    }
+
+    private ResponseCookie buildAuthCookie(String token, Duration maxAge) {
+        return ResponseCookie.from(authCookieName, token)
+                .httpOnly(true)
+                .secure(authCookieSecure)
+                .sameSite(authCookieSameSite)
+                .path("/")
+                .maxAge(maxAge)
+                .build();
     }
 }

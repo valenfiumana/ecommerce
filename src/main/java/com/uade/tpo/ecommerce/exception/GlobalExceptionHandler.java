@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -74,6 +75,11 @@ public class GlobalExceptionHandler {
      * Nota: fallos 403 que ocurren solo en la cadena de filtros de Spring Security siguen yendo a
      * {@link com.uade.tpo.ecommerce.security.RestSecurityErrorHandler}; acá entramos cuando la excepción burbujea desde el controller/servicio.
      */
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponseDTO> manejarUsuarioInactivo(DisabledException ex) {
+        return build(HttpStatus.UNAUTHORIZED, "Usuario inactivo");
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDTO> manejarAccesoDenegado(AccessDeniedException ex) {
         String mensaje = ex.getMessage() != null && !ex.getMessage().isBlank()

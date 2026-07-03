@@ -18,6 +18,7 @@ import com.uade.tpo.ecommerce.dto.usuario.UsuarioPerfilResponseDTO;
 import com.uade.tpo.ecommerce.dto.usuario.UsuarioPerfilUpdateRequestDTO;
 import com.uade.tpo.ecommerce.dto.usuario.UsuarioPublicoResponseDTO;
 import com.uade.tpo.ecommerce.exception.ArgumentInvalidException;
+import com.uade.tpo.ecommerce.exception.BusinessRuleException;
 import com.uade.tpo.ecommerce.exception.ConflictException;
 import com.uade.tpo.ecommerce.exception.ResourceNotFoundException;
 import com.uade.tpo.ecommerce.model.Pedido;
@@ -78,6 +79,19 @@ public class UsuarioService {
                 .nombre(target.getNombre())
                 .apellido(target.getApellido())
                 .build();
+    }
+
+    public void eliminarUsuarioComoAdmin(Long id) {
+        Usuario actor = requireAdmin();
+        Usuario target = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", id));
+
+        if (actor.getId().equals(target.getId())) {
+            throw new BusinessRuleException("No podes eliminar tu propio usuario administrador.");
+        }
+
+        target.setActivo(false);
+        usuarioRepository.save(target);
     }
 
     /**
@@ -150,6 +164,7 @@ public class UsuarioService {
                 .fechaNacimiento(u.getFechaNacimiento())
                 .sexo(u.getSexo())
                 .role(u.getRole())
+                .activo(u.isActivo())
                 .publicaciones(publicaciones)
                 .compras(compras)
                 .ventas(ventas)
@@ -163,6 +178,7 @@ public class UsuarioService {
                 .apellido(u.getApellido())
                 .email(u.getEmail())
                 .role(u.getRole())
+                .activo(u.isActivo())
                 .build();
     }
 
@@ -197,10 +213,11 @@ public class UsuarioService {
                 .orElseThrow(() -> new AccessDeniedException("Usuario autenticado no encontrado."));
     }
 
-    private void requireAdmin() {
+    private Usuario requireAdmin() {
         Usuario u = requireUsuarioAutenticado();
         if (!Role.ADMIN.equals(u.getRole())) {
             throw new AccessDeniedException("Solo administradores pueden listar usuarios.");
         }
+        return u;
     }
 }
